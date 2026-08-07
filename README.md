@@ -13,8 +13,8 @@ catalogue parts behaves identically, and lists what to buy.
 **Status: logic settled and proven in simulation. Nothing built yet, nothing
 tested on hardware.** The polarity finding below should be confirmed on a real
 chip before anyone orders parts —
-[TESTING.md](docs/TESTING.md#1-confirm-the-polarity-on-the-bench) is a ten-minute
-bench check.
+[TESTING.md](docs/TESTING.md#1-confirm-the-polarity) is a ten-minute check, and
+it can be done with the chip still in the machine.
 
 ## The two findings
 

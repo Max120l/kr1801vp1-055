@@ -89,8 +89,33 @@ di/dt per driver is higher, but the package inductance and the available
 decoupling are far better than 1980s practice. The answer is C1–C3 as close to
 the power pins as the layout allows, and the 10 µF nearby.
 
-If it ever proves to matter, the cheap experiment is a series resistor pack on
-one byte — but measure before adding parts.
+If it ever proves to matter, the cheap experiment is a series resistor pack —
+22–33 Ω — on one byte, but measure before adding parts.
+
+### Why not a delay line
+
+The obvious way to put the 7.5 ns back is a delay line, and it does not work
+here: **delay lines are unidirectional and these sixteen paths are not.** A
+lumped-LC module or a buffer-chain delay has an input and an output, so
+restoring the stagger would mean splitting every bit into two steered
+unidirectional paths — thirty-two delay elements plus direction logic, which is
+no longer a '245 and is more complicated than the chip it replaces.
+
+It would also be aimed at the wrong signal. Data arriving *earlier* is safe on
+an asynchronous handshake bus, because the end of the valid window is set by the
+source holding data until the handshake completes, not by this part's delay: a
+faster transceiver moves the window's start earlier and leaves its end where it
+was, so the window widens rather than shifts. The one edge that genuinely moves
+is the release, and that lives on the nOE path, not the data path — which is why
+the fix suggested above is an RC on the enable rather than a slower data path.
+It is also the smallest of the three differences: 11.5/15.25 ns against ~9 ns
+typical, a few nanoseconds, not the twenty-odd on the data paths.
+
+Series resistors survive the objection that kills delay lines, because a
+resistor is bidirectional. That is what makes the 22–33 Ω pack above the right
+shape of fix: it damps the edge and cuts the peak current in both directions,
+with no steering logic and no change to the logic model that `make check`
+proves.
 
 ## Form factor
 
