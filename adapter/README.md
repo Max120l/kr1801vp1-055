@@ -1,11 +1,17 @@
 # The adapter board
 
-A 29 × 30 mm two-layer board that plugs into the socketed D22 site and carries
+A 31 × 32 mm two-layer board that plugs into the socketed D22 site and carries
 the substitute: two 74AHCT245 for the sixteen bidirectional lines, one
 74AHCT125 for C0–C2 → A0–A2, decoupling, and underneath a field of 42 pins in
 the original package's pattern. No glue logic — pin 20 goes straight to the
 '245s' DIR (its sense already matches: high = nA drives V/W) and pin 41 to
 their /OE. The logic is the one proven equivalent in `sim/`.
+
+![top](img/top.png) ![bottom](img/bottom.png)
+
+`vp1-055-adapter-gerbers.zip` is the fab package (two layers, 0.2 mm tracks,
+0.15 mm clearance, 0.6/0.3 mm vias — any prototype fab). `adapter_routed.kicad_pcb`
+is the routed board: 384 segments, 26 vias, every connection routed, DRC clean.
 
 ## The site, as measured
 
