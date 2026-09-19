@@ -1,7 +1,8 @@
 # A replacement for the КР1801ВП1-055
 
 The 055 is a Soviet gate-array bus transceiver: sixteen bidirectional lines plus
-three unidirectional buffers, in a 42-pin planar package. It cannot be bought,
+three unidirectional buffers, in a 42-pin through-hole package with the pins
+in four staggered rows. It cannot be bought,
 and the only machine known to use it is the **Elektronika MS 0511 (UKNC)**,
 where it is **D22** — sitting between the peripheral processor and the MPI bus,
 so when it fails the machine fails in ways that look like everything except a
@@ -84,9 +85,9 @@ the chip is believed to do. Needs Icarus Verilog.
 
 ## What is not done
 
-- **No PCB.** The 42-pin planar footprint is the hard part and is untouched.
-  [DESIGN.md](docs/DESIGN.md#form-factor) lists the options; flying leads to a
-  small board are enough to prove the design before anyone draws a layout.
+- **No PCB.** The 42-pin four-row footprint has to be measured on the machine
+  before an adapter can be drawn — [DESIGN.md](docs/DESIGN.md#form-factor). It
+  is through-hole, so the adapter is a pin field, not a soldering problem.
 - **No hardware test.** Everything here is a reading of a schematic and a
   simulation of that reading.
 - **The delay stagger is not reproduced.** The original deliberately makes its

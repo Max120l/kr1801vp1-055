@@ -94,18 +94,31 @@ one byte — but measure before adding parts.
 
 ## Form factor
 
-The original is a 42-pin planar package, which is the hard part of this project
-and is deliberately not solved here. Options, roughly in order of effort:
+The original is a 42-pin **through-hole** package with its pins in **four
+staggered rows** — two offset rows per side (an earlier version of this file
+called it planar; the machine says otherwise). That makes the substitute's
+mechanical side straightforward: an adapter board carrying U1–U3 on top with
+a field of 42 pins underneath in the same pattern. What it needs first is the
+geometry, measured on the board with calipers: pitch along a row, the offset
+between the two rows of a side, the distance between the sides, and hole
+diameter. The Soviet pitch is 2.5 mm, not 2.54 — over a ten-pin row that is
+0.4 mm of drift, so the pin field must be drawn at 2.5 and not built from
+2.54 mm header strips.
 
-1. **An adapter board** carrying U1–U3 on top, with a pin field matching the
-   original's footprint underneath. Needs the exact package drawing.
-2. **Flying leads** to a small board mounted elsewhere in the machine — ugly,
-   reversible, and entirely adequate for proving the design before committing to
-   a layout.
-3. Reuse the k1801 project's own `055/sch/055.lay6` footprint work if it turns
-   out to contain the package geometry — worth opening in Sprint Layout before
-   redrawing it.
+Options, in order of effort:
 
-**Socket the original when removing it.** Nothing here is proven on hardware
-yet, and the ability to put the old chip back is the difference between an
-experiment and a one-way trip.
+1. **Flying leads** to a small board mounted elsewhere in the machine — ugly,
+   reversible, adequate for proving the design.
+2. **An adapter board** with the 42-pin field, plugging into a socketed site
+   (below).
+3. Reuse the k1801 project's own `055/sch/055.lay6` footprint work if it
+   contains the package geometry — worth opening in Sprint Layout before
+   redrawing.
+
+**Socket the site when the original comes out.** No socket exists for this
+package, but none is needed: solder an individual machined-pin receptacle
+(turned-pin, the kind sold loose or as break-away strips — cut into single
+pins) into each of the 42 holes. Single receptacles follow any pitch and any
+stagger, which is exactly why strips are the wrong tool here. The original,
+a sourced replacement, or the adapter board then all plug into the same site,
+and the chip that came out stays intact for the bench polarity check.
