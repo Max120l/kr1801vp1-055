@@ -10,9 +10,15 @@ transceiver.
 This repository works out what the chip does, proves a substitute built from
 catalogue parts behaves identically, and lists what to buy.
 
-**Status: logic settled and proven in simulation. Nothing built yet, nothing
-tested on hardware.** The polarity finding below should be confirmed on a real
-chip before anyone orders parts —
+**Status: logic settled and proven in simulation; the fault this repository
+exists for is now confirmed on the machine (September 2026).** Two independent
+methods agree: cooling D22 alone keeps the failing MS 0511 running, and a
+CPU-side RAM canary (in onerom-1801re2, `diag/canary`) shows every plane on
+the CPU's side of the bus staying clean for hundreds of passes while the
+peripheral processor — the side behind D22 — dies hot: black screen, no
+console bell, keyboard and hardware reset both ineffective until the machine
+cools. The 055 is the part to replace. Nothing built yet; the polarity finding
+below should still be confirmed on the real chip (cold) before ordering —
 [TESTING.md](docs/TESTING.md#1-confirm-the-polarity-on-the-bench) is a ten-minute
 bench check.
 
