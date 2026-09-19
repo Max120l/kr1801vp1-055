@@ -85,9 +85,10 @@ the chip is believed to do. Needs Icarus Verilog.
 
 ## What is not done
 
-- **No PCB.** The 42-pin four-row footprint has to be measured on the machine
-  before an adapter can be drawn — [DESIGN.md](docs/DESIGN.md#form-factor). It
-  is through-hole, so the adapter is a pin field, not a soldering problem.
+- **The PCB is drawn** — [adapter/](adapter/README.md): a 31 × 32 mm two-layer
+  board with the three chips on top and a 42-pin field in the measured
+  four-row site geometry underneath, generated and routed by script, gerbers
+  included. Not yet fabricated.
 - **No hardware test.** Everything here is a reading of a schematic and a
   simulation of that reading.
 - **The delay stagger is not reproduced.** The original deliberately makes its
