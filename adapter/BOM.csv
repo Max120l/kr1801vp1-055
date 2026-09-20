@@ -1,7 +1,7 @@
-ref,qty,value,package,example part,notes
-"U1, U2",2,74AHCT245,TSSOP-20,SN74AHCT245PWR,"non-inverting; AHCT only (not '640, not HC/HCT)"
-U3,1,74AHCT125,TSSOP-14,SN74AHCT125PWR,"or 3 sections of a non-inverting '244/'541 with enables grounded"
-"C1, C2, C3",3,100 nF,0603,any X7R 16 V+,decoupling
-C4,1,10 uF,0805,any X5R/X7R 10 V+,bulk
-J1,42,machined round pin 0.5-0.6 mm,single,machined-pin header strip broken apart,soldered from the top; ~3 mm protrusion below
-socket (on the MS 0511),42,machined receptacle for 0.5 mm pins,single,individual receptacles,"not 2.54 mm strips (rows are 2.5 mm pitch)"
+ref,qty,value,package,manufacturer part,DigiKey,Mouser,notes
+"U1, U2",2,74AHCT245,TSSOP-20,TI SN74AHCT245PWR,296-1118-1-ND,595-SN74AHCT245PWR,"non-inverting; AHCT only (not '640, not HC/HCT)"
+U3,1,74AHCT125,TSSOP-14,TI SN74AHCT125PWR,296-1108-1-ND,595-SN74AHCT125PWR,"or Nexperia 74AHCT125PW (same pinout); or 3 sections of a non-inverting '244/'541 with enables grounded"
+"C1, C2, C3",3,100 nF 50 V X7R,0603,Samsung CL10B104KB8NNNC,1276-1000-1-ND,187-CL10B104KB8NNNC,decoupling; any 0603 100 nF X7R is fine
+C4,1,10 uF 16 V X5R,0805,Samsung CL21A106KOQNNNG,1276-6455-1-ND,187-CL21A106KOQNNNG,bulk; any 0805 10 uF is fine
+J1,42,PCB pin 0.51 mm dia,single pin with 1.17 mm flange,Mill-Max 3128-1-00-21-00-00-08-0,3128-100210000080-ND,575-3128-1-00-21-00-00-08-0,"flange on top of the adapter, 6.35 mm end down through the 1.0 mm hole, trim to ~3.5 mm below the board; 3128-3-00-21-00-00-08-0 (DigiKey ED11474-ND) is the same pin 7 mm longer, stocked deeper"
+socket (on the MS 0511),42,receptacle for 0.46-0.51 mm pins,single; 1.0-1.1 mm hole,Harwin H3153-01,952-1457-ND,855-H3153-01,"one per hole; needs the board holes to be at least 1.0 mm - check with a 1.0 mm drill shank first; not 2.54 mm strips (rows are 2.5 mm pitch)"

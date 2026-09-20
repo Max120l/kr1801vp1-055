@@ -32,16 +32,24 @@ package revision disagrees, the numbers live in one dictionary at the top of
 
 ## Parts
 
-Also as [`BOM.csv`](BOM.csv), with quantities, example order codes and the
-42 socket receptacles for the machine side.
+Also as [`BOM.csv`](BOM.csv), with quantities, DigiKey and Mouser numbers
+and the 42 socket receptacles for the machine side.
 
 | ref | part | package |
 |---|---|---|
-| U1, U2 | 74AHCT245 (e.g. SN74AHCT245PW) | TSSOP-20 |
-| U3 | 74AHCT125 (e.g. SN74AHCT125PW) | TSSOP-14 |
+| U1, U2 | 74AHCT245 (SN74AHCT245PWR) | TSSOP-20 |
+| U3 | 74AHCT125 (SN74AHCT125PWR) | TSSOP-14 |
 | C1–C3 | 100 nF | 0603 |
 | C4 | 10 µF | 0805 |
-| J1 | 42 machined round pins, 0.5–0.6 mm | single turned pins (break a strip apart), soldered from the top |
+| J1 | 42 PCB pins, Ø0.51 mm with a 1.17 mm flange (Mill-Max 3128-1-00-21-00-00-08-0) | single pins, soldered from the top |
+| socket | 42 receptacles for Ø0.46–0.51 mm pins in a 1.0–1.1 mm hole (Harwin H3153-01) | one per hole on the MS 0511 |
+
+The pin and the receptacle are a matched pair: the H3153-01 is specified for
+0.46–0.51 mm pins and the 3128 pin is 0.51 mm. Ordinary machined-pin header
+strips are *not* a safe substitute unless measured — Mill-Max's 2.54 mm
+headers have 0.61 mm tails and their 1.27 mm headers 0.43 mm, both outside
+the receptacle's range. The receptacle needs a 1.0–1.1 mm hole on the
+machine; check the site with a 1.0 mm drill shank before ordering.
 
 TSSOP because that is what fits inside the site outline; SOIC would need the
 board to overhang the chip ends by ~10 mm, and the D22 neighbourhood is
@@ -70,11 +78,12 @@ things.
    of them (singles, not strips — strips are 2.54 mm and drift off the 2.5 mm
    holes within a row).
 2. Solder the SMD parts on the top of the adapter.
-3. Push 42 machined pins through the adapter from the top and solder them on
-   the top side; they must protrude ~3 mm below. A scrap of the original
-   package outline, or the socketed site itself as a jig (pins pushed into
-   the receptacles first, adapter lowered onto them, then soldered) keeps
-   them straight.
+3. Push the 42 pins through the adapter from the top, **long (6.35 mm) end
+   down**: the flange stops on the top pad and is soldered there, the short
+   2.5 mm stub stays above the board. Use the socketed site as the jig (pins
+   plugged into the receptacles first, adapter lowered onto them, then
+   soldered) so they stay straight; then trim the pins to ~3.5 mm below the
+   board, which is what the receptacle takes.
 4. Plug in with the pin-1 corner (square pad, marked on the silk) at the
    dimple corner of the site.
 
