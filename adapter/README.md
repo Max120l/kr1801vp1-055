@@ -32,6 +32,9 @@ package revision disagrees, the numbers live in one dictionary at the top of
 
 ## Parts
 
+Also as [`BOM.csv`](BOM.csv), with quantities, example order codes and the
+42 socket receptacles for the machine side.
+
 | ref | part | package |
 |---|---|---|
 | U1, U2 | 74AHCT245 (e.g. SN74AHCT245PW) | TSSOP-20 |

@@ -1,0 +1,7 @@
+ref,qty,value,package,example part,notes
+"U1, U2",2,74AHCT245,TSSOP-20,SN74AHCT245PWR,"non-inverting; AHCT only (not '640, not HC/HCT)"
+U3,1,74AHCT125,TSSOP-14,SN74AHCT125PWR,"or 3 sections of a non-inverting '244/'541 with enables grounded"
+"C1, C2, C3",3,100 nF,0603,any X7R 16 V+,decoupling
+C4,1,10 uF,0805,any X5R/X7R 10 V+,bulk
+J1,42,machined round pin 0.5-0.6 mm,single,machined-pin header strip broken apart,soldered from the top; ~3 mm protrusion below
+socket (on the MS 0511),42,machined receptacle for 0.5 mm pins,single,individual receptacles,"not 2.54 mm strips (rows are 2.5 mm pitch)"
