@@ -10,8 +10,39 @@ die schematic rather than measured. It is worth ten minutes to check against the
 real chip, because if it is wrong then every '245 in the BOM should be a '640
 and no amount of careful layout will save the board.
 
-With the original 055 out of the machine, on a breadboard, +5 V on pin 42 and
-ground on pin 21:
+### The carrier
+
+The package fits no breadboard and, with its 0.5 mm square pins, no machined
+receptacle either — the original will not plug into the socket that replaces
+it. A bare adapter PCB solves both problems at once: it is a breakout for the
+chip *and* a plug for the socket, and once built it stays useful as the A/B
+reference against the substitute.
+
+1. Fit the header pins to a bare adapter first (the same round-pin strip as
+   the substitute build), **plastic on the underside**, mating end up through
+   the board. The tail is only ~3 mm and the board takes 1.6 of it, so with
+   the plastic on top there is nothing left to reach the receptacles; on the
+   bottom the plastic is just a 2.5 mm standoff. Trim the stubs above the
+   board to ~1.5 mm.
+2. Set the chip on the top side, **pin 1 at the square pad**, shifted about
+   half a millimetre along the row so that each square pin lies against its
+   stub on the same 1.7 mm pad. Solder each pair with a small blob. The
+   stagger keeps the nearest neighbour 2.8 mm away, so bridges are unlikely.
+   Check pin 1 before the first joint — it is the one thing 42 joints later
+   cannot fix.
+3. The whole stack (receptacle, standoff, board, chip) stands about 10 mm
+   above the motherboard, twice the original. Look at what sits above D22 with
+   the case closed before committing.
+
+The open ring pads on the top side are the bench test points: clip onto them
+for the polarity check below. In the machine, the carrier proves the socket
+and the pin height on a chip that is known to run cold, so the first power-up
+of the substitute only tests the substitute — and afterwards the two swap in
+seconds for a hot A/B on the same socket.
+
+### The polarity check
+
+With the original 055 on the carrier, +5 V on pin 42 and ground on pin 21:
 
 | step | | |
 |---|---|---|
@@ -89,7 +120,9 @@ run through the ROM socket and need no working machine. In rough order:
 
 1. **Before fitting**, reproduce the fault: from cold the machine runs about ten
    minutes, then fails; cooling D22 brings it back within seconds. That
-   signature is what the substitute has to remove.
+   signature is what the substitute has to remove. With the site already
+   socketed, this is the original on its carrier (section 1) — which also
+   proves the socket and pin height before the substitute ever goes in.
 2. **Fit the substitute** and run the register test (`make_regtest.py`) — it
    touches no memory, so it isolates the bus path this chip is on, and a pass
    takes milliseconds rather than seconds.
