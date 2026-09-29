@@ -36,7 +36,7 @@ REV = "C"
 
 TRACK = 0.2    # mm
 CLEAR = 0.15
-VIA = 0.6
+VIA = 0.7      # 0.2 mm annular ring on a 0.3 drill
 VIA_DRILL = 0.3
 
 # --------------------------------------------------------------- pin map
@@ -139,7 +139,9 @@ def main(out="adapter.kicad_pcb"):
     place("U2", "74AHCT245", LIB_SO, tssop20, 0, 0.6 + dy, 180, u245(8, "W"))
     place("U3", "74AHCT125", LIB_SO, tssop14, 0, 7.0 + dy, 180, U125)
     cap = "C_0603_1608Metric"
-    for ref, x, y in (("C1", -6.0, -6.6), ("C2", 6.0, 0.6), ("C3", -6.0, 7.0)):
+    # each 100n sits in the left lane next to its chip's VCC pin (pin 20 / 14,
+    # which the 180-degree rotation puts at the chip's bottom-left corner)
+    for ref, x, y in (("C1", -6.0, -6.6 - dy), ("C2", -6.0, 0.6 + dy), ("C3", -6.0, 7.0 + dy)):
         place(ref, "100n", LIB_C, cap, x, y, 90, {1: "VCC", 2: "GND"})
     place("C4", "10u", LIB_C, "C_0805_2012Metric", 0, 11.2, 0, {1: "VCC", 2: "GND"})
 

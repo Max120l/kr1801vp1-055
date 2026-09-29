@@ -10,8 +10,29 @@ their /OE. The logic is the one proven equivalent in `sim/`.
 ![top](img/top.png) ![bottom](img/bottom.png)
 
 `vp1-055-adapter-gerbers.zip` is the fab package (two layers, 0.2 mm tracks,
-0.15 mm clearance, 0.6/0.3 mm vias — any prototype fab). `adapter_routed.kicad_pcb`
-is the routed board: 384 segments, 26 vias, every connection routed, DRC clean.
+0.15 mm clearance, 0.7/0.3 mm vias, GND pours — any prototype fab).
+`adapter_routed.kicad_pcb` is the routed board: 330 segments, 18 vias, every
+connection routed, DRC clean.
+
+## Routing practice
+
+Checked against the usual two-layer rules (JLCPCB's routing best-practice
+list, September 2026):
+
+| rule | this board |
+|---|---|
+| signal width 8–10 mil | 0.2 mm (8 mil) everywhere |
+| power wider | VCC/GND at 0.3 mm wherever the neighbours allow (about half their length); the rest 0.2 mm. Three AHCT chips draw a few tens of mA, so 8 mil is electrically fine either way |
+| clearance ≥ 4 mil | 0.15 mm (6 mil) minimum, measured |
+| 45° bends, no acute angles | 274 bends at 45°, 6 right angles, no acute ones |
+| via ring ≥ 0.18–0.25 mm | 0.7 mm pad on a 0.3 mm drill: 0.2 mm ring |
+| hole-to-hole ≥ 0.2 mm | 0.53 mm minimum |
+| copper-to-edge ≥ 0.2 mm | pours stop 0.5 mm inside the edge, everything else more |
+| reference plane / return path | solid GND pour on the bottom (≈600 mm², 60 % of the board) under the top-layer signal runs, a smaller one on top, stitched by the GND pins and vias |
+| decoupling next to the VCC pin | each 100 nF within 3.6 mm of its chip's VCC pin; 10 µF bulk at the '125 |
+| 3W spacing | not met in the bus bundles (0.35 mm centre-to-centre). Irrelevant at these edge rates and lengths; noted for honesty |
+| silk ≥ 1 mm text, clear of pads | 1 mm text, pads knocked out of the silk in the export |
+| DRC zero errors | yes, with the design's own rules loaded (see `polish_adapter.py` for why that matters) |
 
 ## The site, as measured
 
@@ -75,11 +96,18 @@ TTL-compatible), and the speed is in the same band as the original — see
 ```
 
 `build_adapter.py` writes the board from the geometry and the netlist;
-Freerouting routes it; `finish_adapter.py` imports the routes (parsing the
+Freerouting routes it (`search.sh` tries a few placement nudges until every
+connection completes); `finish_adapter.py` imports the routes (parsing the
 session file itself — pcbnew's importer only works inside the GUI), runs DRC
-and saves; `kicad-cli` exports gerbers and drill. The zip is what goes to the
-fab; the routed `.kicad_pcb` is there for anyone who wants to look or move
-things.
+and saves; `polish_adapter.py` widens the power traces where clearance
+allows, adds the GND pours and runs DRC again; `kicad-cli` exports gerbers
+and drill. The zip is what goes to the fab; the routed `.kicad_pcb` is there
+for anyone who wants to look or move things.
+
+One trap: netclass rules live in the project file, which this pipeline does
+not have, so a freshly loaded board falls back to KiCad's 0.25/0.2 mm
+defaults and DRC then flags every track. The scripts restore the design's
+rules before checking; do the same if you open the board elsewhere.
 
 ## Assembly
 
