@@ -85,12 +85,13 @@ the chip is believed to do. Needs Icarus Verilog.
 
 ## What is not done
 
-- **The PCB is at revision B** — [adapter/](adapter/README.md): a 31 × 32 mm
+- **The PCB is at revision C** — [adapter/](adapter/README.md): a 31 × 32 mm
   two-layer board with the three chips on top and a 42-pin field in the
   measured four-row site geometry underneath, generated and routed by script,
   gerbers included. Revision A was fabricated and did not fit: it mirrored the
-  right-hand side, and the real package's sides are translated copies
-  (rows 11 · 10 · 11 · 10). Rev B corrects the field; not yet fabricated.
+  two sides, and the real package's sides are translated copies (rows
+  10 · 11 · 10 · 11 with pin 1 top-left, pin 1 in the inner row). Rev C
+  corrects the field; not yet fabricated.
 - **No hardware test.** Everything here is a reading of a schematic and a
   simulation of that reading.
 - **The delay stagger is not reproduced.** The original deliberately makes its

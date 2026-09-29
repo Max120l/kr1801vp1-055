@@ -20,15 +20,19 @@ G = dict(               # measured on the MS 0511 board, September 2026
     side_outer=25.0,    # outer row to outer row across the package
     hole=1.0,           # drill: 0.5 mm square pins, machined receptacles fit
     pad=1.7,            # annular pad diameter
-    first_outer=True,   # pin 1 (dimple corner) sits in the outer row
+    first_outer=False,  # pin 1 (dimple corner, top-left) sits in the INNER row
     margin=3.0,         # board edge beyond the outer rows / end pins
 )
+REV = "C"
 # numbering: pins 1..21 run down the LEFT side (top to bottom), alternating
-# outer/inner rows; pins 22..42 run UP the right side (DIP-like).
-# The two sides are TRANSLATED copies, not mirror images: the 11-pin row
-# (the one reaching the end positions) is the OUTER row on the pin-1 side and
-# the INNER row on the pin-22 side, so the rows read 11-10-11-10 across the
-# package.  (Rev A had 11-10-10-11 - mirrored - and did not fit.)
+# rows; pins 22..42 run UP the right side (DIP-like).
+# The two sides are TRANSLATED copies, not mirror images.  Counted on the
+# socketed site with pin 1 top-left, the rows read 10-11-10-11 from left to
+# right: the 11-pin row (the one reaching the end positions) is the INNER row
+# on the pin-1 side and the OUTER row on the pin-22 side.  So pins 1 and 21
+# are inboard, pins 22 and 42 outboard.
+# Rev A had 11-10-10-11 (mirrored), rev B 11-10-11-10 (right idea, wrong
+# parity); neither fits.
 
 TRACK = 0.2    # mm
 CLEAR = 0.15
@@ -154,7 +158,12 @@ def main(out="adapter.kicad_pcb"):
         t.SetTextSize(MM(size, size)); t.SetTextThickness(pcbnew.FromMM(0.15))
         t.SetLayer(layer); t.SetTextAngleDegrees(angle); board.Add(t)
     text("VP1-055 ADAPTER", 0, h / 2 - 1.3, 1.0, pcbnew.F_SilkS)
-    text("1", -G["side_outer"] / 2 - 1.6, -L / 2, 1.0, pcbnew.F_SilkS)
+    text("REV " + REV, 0, -h / 2 + 1.3, 1.0, pcbnew.F_SilkS)
+    x1, y1 = pin_xy(1)
+    text("1", x1, y1 - 1.6, 1.0, pcbnew.F_SilkS)        # directly above pin 1
+    t = pcbnew.PCB_TEXT(board); t.SetText("REV " + REV); t.SetPosition(MM(0, -h / 2 + 1.3))
+    t.SetTextSize(MM(1.0, 1.0)); t.SetTextThickness(pcbnew.FromMM(0.15))
+    t.SetLayer(pcbnew.B_SilkS); t.SetMirrored(True); board.Add(t)
     for i, line in enumerate(("U1 U2 74AHCT245", "U3 74AHCT125", "C1-C3 100n  C4 10u")):
         t = pcbnew.PCB_TEXT(board); t.SetText(line); t.SetPosition(MM(0, -3.0 + 2.0 * i))
         t.SetTextSize(MM(1.0, 1.0)); t.SetTextThickness(pcbnew.FromMM(0.15))

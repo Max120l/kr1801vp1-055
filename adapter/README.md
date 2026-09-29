@@ -24,12 +24,16 @@ The КР1801ВП1 package is through-hole, 42 pins in **four staggered rows**:
 | inner row to outer row, same side | 2.5 mm |
 | outer row to outer row | 25.0 mm |
 | pins | 0.5 mm square; standard machined receptacles fit |
-| numbering | pin 1 at the dimple corner, **outer** row; down the left side, up the right (DIP order) |
-| rows | **11 · 10 · 11 · 10** across the package. The two sides are *translated* copies, not mirror images: the 11-pin row (the one that reaches the end positions) is the outer row on the pin-1 side and the **inner** row on the pin-22 side. Pin 22 and pin 42 are therefore inboard. |
+| numbering | pin 1 at the dimple corner, **inner** row; down the left side, up the right (DIP order) |
+| rows | with pin 1 top-left, **10 · 11 · 10 · 11** from left to right. The two sides are *translated* copies, not mirror images: the 11-pin row (the one that reaches the end positions) is the **inner** row on the pin-1 side and the **outer** row on the pin-22 side. Pins 1 and 21 are inboard, pins 22 and 42 outboard. |
 
-**Revision B** is the current board. Revision A had the right side mirrored
-(11 · 10 · 10 · 11) and did not fit the site; boards without the `REV B` silk
-mark are rev A and go in the bin.
+**Revision C** is the current board (`REV C` on both silks). Revision A was
+fabricated with the two sides mirrored (11 · 10 · 10 · 11): its right side
+fits the site, its left side has the two rows swapped. Revision B guessed the
+parity the other way round (11 · 10 · 11 · 10) and was never fabricated. Rev A
+boards remain usable as the bench carrier in
+[TESTING.md](../docs/TESTING.md) if the left-side pins are wired instead of
+plugged.
 
 Measured on the MS 0511 board in September 2026. If a different board or
 package revision disagrees, the numbers live in one dictionary at the top of
