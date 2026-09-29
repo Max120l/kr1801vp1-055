@@ -103,7 +103,10 @@ geometry, measured on the board with calipers: pitch along a row, the offset
 between the two rows of a side, the distance between the sides, and hole
 diameter. The Soviet pitch is 2.5 mm, not 2.54 — over a ten-pin row that is
 0.4 mm of drift, so the pin field must be drawn at 2.5 and not built from
-2.54 mm header strips.
+2.54 mm header strips. And the two sides are not mirror images: the rows run
+11 · 10 · 11 · 10 across the package, the 11-pin row being outboard on the
+pin-1 side and inboard on the other. The first adapter revision assumed
+mirror symmetry and did not fit — see [adapter/](../adapter/README.md).
 
 Options, in order of effort:
 

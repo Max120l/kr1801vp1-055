@@ -24,7 +24,11 @@ G = dict(               # measured on the MS 0511 board, September 2026
     margin=3.0,         # board edge beyond the outer rows / end pins
 )
 # numbering: pins 1..21 run down the LEFT side (top to bottom), alternating
-# outer/inner rows; pins 22..42 run UP the right side, mirrored (DIP-like).
+# outer/inner rows; pins 22..42 run UP the right side (DIP-like).
+# The two sides are TRANSLATED copies, not mirror images: the 11-pin row
+# (the one reaching the end positions) is the OUTER row on the pin-1 side and
+# the INNER row on the pin-22 side, so the rows read 11-10-11-10 across the
+# package.  (Rev A had 11-10-10-11 - mirrored - and did not fit.)
 
 TRACK = 0.2    # mm
 CLEAR = 0.15
@@ -64,10 +68,11 @@ def pin_xy(n):
     half_len = (s - 1) * p / 2
     if n <= s:                       # left side, top to bottom
         k = n - 1; x_sign = -1
+        outer = (k % 2 == 0) == G["first_outer"]
     else:                            # right side, bottom to top
         k = (s - 1) - (n - s - 1); x_sign = 1
+        outer = (k % 2 == 0) != G["first_outer"]     # translated copy, not mirrored
     y = -half_len + k * p
-    outer = (k % 2 == 0) == G["first_outer"]
     x = x_sign * (G["side_outer"] / 2 - (0 if outer else G["row_offset"]))
     return x, y
 

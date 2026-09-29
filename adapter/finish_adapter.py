@@ -35,6 +35,16 @@ def find_all(node, head):
 
 def main(board_in, ses, board_out):
     b = pcbnew.LoadBoard(board_in)
+    # netclass rules live in the (absent) project file, so a loaded board falls
+    # back to KiCad's 0.25/0.2 defaults and DRC would flag every track; restore
+    # the design's rules before checking
+    from build_adapter import TRACK, CLEAR, VIA, VIA_DRILL
+    ds = b.GetDesignSettings()
+    ds.m_TrackMinWidth = pcbnew.FromMM(TRACK); ds.m_MinClearance = pcbnew.FromMM(CLEAR)
+    ds.m_ViasMinSize = pcbnew.FromMM(VIA); ds.m_MinThroughDrill = pcbnew.FromMM(VIA_DRILL)
+    nc = ds.m_NetSettings.m_DefaultNetClass
+    nc.SetTrackWidth(pcbnew.FromMM(TRACK)); nc.SetClearance(pcbnew.FromMM(CLEAR))
+    nc.SetViaDiameter(pcbnew.FromMM(VIA)); nc.SetViaDrill(pcbnew.FromMM(VIA_DRILL))
     tree = parse(tokenize(open(ses).read()))
     routes = next(find_all(tree, "routes"))
     res = next(find_all(routes, "resolution"))          # ['resolution', 'um', '10']

@@ -24,7 +24,12 @@ The КР1801ВП1 package is through-hole, 42 pins in **four staggered rows**:
 | inner row to outer row, same side | 2.5 mm |
 | outer row to outer row | 25.0 mm |
 | pins | 0.5 mm square; standard machined receptacles fit |
-| numbering | pin 1 at the dimple corner, **outer** row; down the left side, up the right (DIP order); 11 outer + 10 inner pins per side |
+| numbering | pin 1 at the dimple corner, **outer** row; down the left side, up the right (DIP order) |
+| rows | **11 · 10 · 11 · 10** across the package. The two sides are *translated* copies, not mirror images: the 11-pin row (the one that reaches the end positions) is the outer row on the pin-1 side and the **inner** row on the pin-22 side. Pin 22 and pin 42 are therefore inboard. |
+
+**Revision B** is the current board. Revision A had the right side mirrored
+(11 · 10 · 10 · 11) and did not fit the site; boards without the `REV B` silk
+mark are rev A and go in the bin.
 
 Measured on the MS 0511 board in September 2026. If a different board or
 package revision disagrees, the numbers live in one dictionary at the top of
