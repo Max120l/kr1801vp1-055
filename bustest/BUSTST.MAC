@@ -56,7 +56,9 @@ MAXRPT	=	8.			; detail lines per pattern before we stop
 ; ---------------------------------------------------------------------------
 START:	.PRINT	#MBANNR
 	.ENTER	#AREA,#CHAN,#FILE,#BLKS
-	BCS	ERRENT
+	BCC	10$			; branches reach +-127 words and the
+	JMP	ERRENT			; error handlers are much further off,
+10$:					; so jump rather than branch
 	CLR	PASSNO
 	CLR	NERRS
 
@@ -88,9 +90,12 @@ ENDPAS:	INC	PASSNO
 ;
 DOTEST:	CLR	RPTCNT
 	.WRITW	#AREA,#CHAN,#BUF1,#WRDS,#0
-	BCS	ERRWRT
-	.READW	#AREA,#CHAN,#BUF2,#WRDS,#0
-	BCS	ERRRD
+	BCC	10$
+	JMP	ERRWRT
+10$:	.READW	#AREA,#CHAN,#BUF2,#WRDS,#0
+	BCC	20$
+	JMP	ERRRD
+20$:
 	MOV	#BUF1,R0
 	MOV	#BUF2,R1
 	MOV	#WRDS,R2

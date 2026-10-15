@@ -222,3 +222,10 @@ register — so that line would not have assembled at all; it is now built from
 `BIC` and `BIS`, which also drops any dependency on `XOR` existing on this CPU.
 A third, cosmetic: the banner's `CTRL/C` contained the `.ASCIZ` delimiter and
 would have truncated the string.
+
+MACRO on the machine then found the one class of error no amount of Python
+could: `BCS` to the three error handlers was out of range. A PDP-11 conditional
+branch reaches ±127 words and the handlers sit several hundred words past the
+pattern generators, so each is now a `BCC` over a `JMP`. Three errors, all the
+same, and nothing else in 300 lines — which is about the best a first assembly
+of untested source can reasonably go.
