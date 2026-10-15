@@ -244,24 +244,62 @@ def build(total_blocks, file_blocks, dev, iterations):
 # reading it back
 # --------------------------------------------------------------------------
 
-def read_volume(image):
+def seg_plausible(image, blk):
+    """Does block `blk` hold something shaped like a directory segment header?"""
+    o = blk * BLOCK
+    if o + 10 > len(image):
+        return False
+    tot, nxt, high, extra, start = struct.unpack_from("<5H", image, o)
+    return (1 <= tot <= 31 and nxt <= tot and 1 <= high <= tot
+            and extra <= 64 and 0 < start < len(image) // BLOCK)
+
+
+def locate_directory(image, strict=True):
+    """
+    Find the directory.  The home block is supposed to say where it is, and on a
+    DEC-written volume it does.
+
+    FODOS does not fill the home block the same way: the fodos30 volume this was
+    tested against has cluster size 0, a directory pointer of 0, a volume ID of
+    0x55 filler and a checksum that does not match, yet carries a perfectly
+    ordinary RT-11 directory at block 6.  So on a foreign volume, fall back to
+    block 6 -- the only place RT-11 ever actually puts it -- and validate by
+    reading the segment header rather than by trusting the home block.
+
+    Nothing here ever writes the home block of a volume it did not create. That
+    disk boots; its home block is none of this tool's business.
+    """
+    base = HOME_BLOCK * BLOCK
+    (cluster,) = struct.unpack_from("<H", image, base + 0o700)
+    (first,) = struct.unpack_from("<H", image, base + 0o702)
+
+    if strict:
+        if cluster != 1:
+            raise ValueError("cluster size %d, expected 1" % cluster)
+        if first != DIR_START:
+            raise ValueError("directory at %d, expected %d" % (first, DIR_START))
+        want = sum(struct.unpack_from("<255H", image, base)) & 0xFFFF
+        (got,) = struct.unpack_from("<H", image, base + 0o776)
+        if want != got:
+            raise ValueError("home block checksum %06o, computed %06o" % (got, want))
+        return first
+
+    if cluster == 1 and 0 < first < len(image) // BLOCK and seg_plausible(image, first):
+        return first
+    if seg_plausible(image, DIR_START):
+        return DIR_START
+    raise ValueError("no directory segment at block %d, and the home block does "
+                     "not point at one" % DIR_START)
+
+
+def read_volume(image, strict=True):
     """
     Parse the directory the way a reader would, so the writer is checked
     against something other than itself.  Returns [(name, ext, blocks, data)].
     """
     if len(image) < (DIR_START + DIR_SEG_BLOCKS) * BLOCK:
         raise ValueError("image too short")
-    home = image[HOME_BLOCK * BLOCK:(HOME_BLOCK + 1) * BLOCK]
-    (cluster,) = struct.unpack_from("<H", home, 0o700)
-    (first,) = struct.unpack_from("<H", home, 0o702)
-    if cluster != 1:
-        raise ValueError("cluster size %d, expected 1" % cluster)
-    if first != DIR_START:
-        raise ValueError("directory at %d, expected %d" % (first, DIR_START))
-    want = sum(struct.unpack_from("<255H", home, 0)) & 0xFFFF
-    (got,) = struct.unpack_from("<H", home, 0o776)
-    if want != got:
-        raise ValueError("home block checksum %06o, computed %06o" % (got, want))
+    first = locate_directory(image, strict)
 
     out = []
     seg_no = 1
@@ -299,11 +337,38 @@ def unrad50(v):
     return "".join(reversed(c))
 
 
-def check(image, files, expect_ok=True):
+def verify_preserved(original, new):
+    """
+    Confirm an injection did not disturb the volume it was added to.
+
+    Every file that was on the disk before must still be there, byte for byte,
+    and the home block and boot block must be untouched -- that disk boots, and
+    a stress test that costs you your system volume is not a good trade.
+    """
+    problems = []
+    if new[:BLOCK] != original[:BLOCK]:
+        problems.append("boot block modified")
+    if new[BLOCK:2 * BLOCK] != original[BLOCK:2 * BLOCK]:
+        problems.append("home block modified")
+    try:
+        before = read_volume(original, strict=False)
+        after = {(n, e): d for n, e, _b, d in read_volume(new, strict=False)}
+    except ValueError as exc:
+        return ["cannot re-read: %s" % exc]
+    for name, ext, _blocks, data in before:
+        key = (name, ext)
+        if key not in after:
+            problems.append("%s.%s lost" % (name, ext))
+        elif after[key] != data:
+            problems.append("%s.%s content changed" % (name, ext))
+    return problems
+
+
+def check(image, files, expect_ok=True, strict=True):
     """Verify the image parses and every pattern reads back byte for byte."""
     problems = []
     try:
-        got = {(n, e): d for n, e, _b, d in read_volume(image)}
+        got = {(n, e): d for n, e, _b, d in read_volume(image, strict)}
     except ValueError as exc:
         problems.append("directory: %s" % exc)
         got = {}
@@ -333,11 +398,9 @@ def inject(image, files, force=False):
     something on it worth keeping.
     """
     image = bytearray(image)
-    (cluster,) = struct.unpack_from("<H", image, HOME_BLOCK * BLOCK + 0o700)
-    (first,) = struct.unpack_from("<H", image, HOME_BLOCK * BLOCK + 0o702)
-    if cluster != 1:
-        raise SystemExit("cluster size %d: not a volume this tool understands"
-                         % cluster)
+    first = locate_directory(image, strict=False)
+    if first != DIR_START:
+        print("note: directory at block %d, not the usual %d" % (first, DIR_START))
 
     wanted = {"%s.%s" % (n, e) for n, e, _d in files}
     need = sum((len(d) + BLOCK - 1) // BLOCK for _n, _e, d in files)
@@ -502,14 +565,22 @@ def main():
         files.append(("STRESS", "COM",
                       command_file(a.device, a.iterations, PATTERNS)))
         image = inject(original, files, force=a.force)
-        if not check(image, files):
+        if not check(image, files, strict=False):
             raise SystemExit("refusing to write an image that does not read back")
         if len(image) != len(original):
             raise SystemExit("internal error: image size changed")
+        kept = verify_preserved(original, image)
+        if kept and not a.force:
+            for p in kept:
+                print("  FAIL  %s" % p)
+            raise SystemExit("refusing to write: the original volume was disturbed")
         with open(a.output, "wb") as f:
             f.write(image)
+        n_before = len(read_volume(original, strict=False))
         print("%s: %s with the test added (%d blocks, unchanged size)"
               % (a.output, a.inject, len(image) // BLOCK))
+        print("  %d files already there, all intact; boot and home blocks untouched"
+              % n_before)
         for name, ext, data in files:
             print("  %-6s.%-3s %4d blocks" % (name, ext,
                                               (len(data) + BLOCK - 1) // BLOCK))
