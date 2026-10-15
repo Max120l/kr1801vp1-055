@@ -113,13 +113,9 @@ change.
 - **It cannot force nOE**, so it says nothing about the high-Z release timing
   that [DESIGN.md](../docs/DESIGN.md#timing) flags as the remaining un-analysed
   risk. That one needs a scope.
-- **It reports nothing while running.** A chain gives no feedback until the
-  image comes back, which is fine for an overnight soak and poor for watching.
-  The volume carries `MACRO.SAV`, `LINK.SAV`, `SYSMAC.SML` and `SYSLIB.OBJ` — a
-  complete MACRO-11 environment — so a program that generates, writes, reads
-  and compares in a loop, printing the failing block, word and bit mask as it
-  goes, could be assembled on the machine. That is the better instrument and it
-  is not written yet.
+- **The chain reports nothing while running**, which is fine for an overnight
+  soak and poor for watching. [`BUSTST.MAC`](BUSTST.MAC) is the answer to that;
+  see below.
 - **A floppy error and a bus error look alike.** Anything this finds is
   corruption somewhere between the disk surface and memory; D22 is the most
   interesting suspect but not the only one.
@@ -150,3 +146,71 @@ confirm that reader notices. This caught a real bug on its first run: `BUSTEST`
 is seven characters, RT-11 names are six, and the name was being silently
 truncated to `BUSTES` — so the file would have been written and then not found
 by the procedure that referenced it. Names are now rejected rather than trimmed.
+
+
+# BUSTST.MAC — the same test, on the machine
+
+The chain works but it is a blunt instrument: no feedback until the image comes
+back, and a verdict rather than a diagnosis. The FODOS volume carries
+`MACRO.SAV`, `LINK.SAV`, `SYSMAC.SML` and `SYSLIB.OBJ` — a complete MACRO-11
+environment — so the test can simply run there instead.
+
+```
+.MACRO BUSTST
+.LINK BUSTST
+.RUN BUSTST
+```
+
+It generates each pattern in memory, writes 16 blocks, reads them back into a
+second buffer, and compares word by word. Both directions cross the bus, so both
+are part of the test. One line per pass:
+
+```
+BUSTST - KR1801VP1-055 bus stress. Stop with CTRL-C.
+PASS 000001 ERRS 000000
+PASS 000002 ERRS 000000
+```
+
+and on a bad word, immediately:
+
+```
+ERR W BLK 000013 WRD 000101 EXP 177777 GOT 177737 XOR 000040
+```
+
+`EXP`/`GOT`/`XOR` are the point. The `XOR` column names the bits that went
+wrong, and the letter after `ERR` says which pattern (`W`orst, `C`ouple, wal`K`,
+`A`ddrs). Low byte alone means the V group — the half the original ran three
+gate delays slower, and the signature predicted for the *failing* gate array. A
+substitute whose bytes are equally fast should not show it. Bits spread across
+all sixteen point at the supply transient instead.
+
+Detail lines are capped at eight per pattern per pass so a wholly corrupt buffer
+cannot print four thousand of them; `ERRS` still counts every bad word, so the
+pass total is always the true figure.
+
+Stop it with CTRL-C. The scratch file is deliberately never closed, so RT-11
+discards it on exit and the volume is left exactly as it was found.
+
+## How much of it is checked
+
+**Not assembled, not run** — there is no UKNC and no FODOS here, and no MACRO-11
+cross-assembler either. If MACRO rejects a line, the line is wrong.
+
+What *is* checked is the part most likely to be subtly wrong, by re-implementing
+each routine in Python exactly as the assembly does it:
+
+| routine | checked |
+|---|---|
+| `PUTOCT` | exhaustively, all 65536 values, against `%06o` |
+| the `BIC`/`BIS` xor | against `^` over a sweep of operand pairs |
+| `SWAB`+mask block/word split | exhaustively, all 65536 indices |
+| the four generators | lengths, and that `WORST` really reverses all sixteen lines on every transition |
+
+Two bugs were caught this way before it shipped. The report routine read its
+expected value from `4(SP)` when five pushed registers put it at `2(SP)`, so
+every error line would have printed a saved register instead of the data. And
+`XOR (SP),R0` is not a legal form — the PDP-11's `XOR` takes its source from a
+register — so that line would not have assembled at all; it is now built from
+`BIC` and `BIS`, which also drops any dependency on `XOR` existing on this CPU.
+A third, cosmetic: the banner's `CTRL/C` contained the `.ASCIZ` delimiter and
+would have truncated the string.

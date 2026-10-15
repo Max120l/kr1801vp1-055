@@ -1,0 +1,307 @@
+	.TITLE	BUSTST	bus stress for the KR1801VP1-055 site (D22)
+;
+; Writes a pattern to disk, reads it back, and compares it in memory, for as
+; long as you leave it running.  Reports the failing block, word, expected and
+; actual value, and the XOR of the two.
+;
+; WHY THIS AND NOT A MEMORY TEST.  D22 sits between the inverted MPI AD bus and
+; the PERIPHERAL processor's internal bus.  It carries every word the PP fetches
+; or moves and nothing the central processor does on its own -- which is why a
+; CPU-side RAM canary stayed clean for hundreds of passes while the PP died hot.
+; This program runs on the CP, so the only lever it has on D22 is I/O.  The disk
+; traffic is the test; the patterns decide what that traffic looks like.
+;
+; WHY THESE PATTERNS.  The gate array staggered its two bytes by 7.5 ns so that
+; sixteen output drivers never switched at the same instant.  Two 74x245s switch
+; together, and that is the one place the substitute knowingly differs from the
+; part it replaces.  WORST makes all sixteen lines reverse on every single word,
+; which is exactly the case the stagger existed to spread.
+;
+; WHY NOT DIFFERENCES.  Because FODOS 3.0 has no BINCOM.SAV:
+;	?KMON-F-File not found SY:BINCOM.SAV
+; The comparison therefore has to be in the program, which is better anyway --
+; it reports immediately instead of after the fact, and it needs no scratch
+; volume handed back and forth.
+;
+; ASSEMBLE AND LINK on the machine:
+;	MACRO BUSTST
+;	LINK BUSTST
+;	RUN BUSTST
+;
+; Stop it with CTRL/C.  The scratch file is never closed, so RT-11 discards it
+; on exit and the volume is left as it was found.
+;
+; READING A FAILURE.  The XOR column is the interesting one.  The original's V
+; group ran three gate delays where W ran one, so the low byte had much less
+; timing margin and should have failed first as the die heated -- that is the
+; signature predicted for the FAILING gate array.  A substitute whose two bytes
+; are equally fast should not show it.  Errors in the low byte alone therefore
+; mean something still reproduces the original's weakness; errors spread across
+; all sixteen bits point at the supply transient instead, and the answer to that
+; is the series resistor pack in DESIGN.md, not a logic change.
+;
+; UNTESTED.  This has never been assembled or run -- there is no UKNC and no
+; FODOS here.  If MACRO objects to a line, the line is wrong, not your machine.
+;
+	.MCALL	.ENTER,.WRITW,.READW,.PRINT,.EXIT
+
+CHAN	=	0			; channel we work on
+BLKS	=	16.			; blocks in the scratch file
+WRDS	=	BLKS*256.		; words per buffer, one file's worth
+USERRB	=	52			; RT-11 puts request error codes here
+MAXRPT	=	8.			; detail lines per pattern before we stop
+					; talking; a wholly corrupt buffer would
+					; otherwise print four thousand of them
+
+; ---------------------------------------------------------------------------
+START:	.PRINT	#MBANNR
+	.ENTER	#AREA,#CHAN,#FILE,#BLKS
+	BCS	ERRENT
+	CLR	PASSNO
+	CLR	NERRS
+
+LOOP:	MOV	#PATTAB,R5		; walk the pattern table
+NEXTP:	MOV	(R5)+,R4		; generator address, 0 ends the table
+	BEQ	ENDPAS
+	MOV	(R5)+,PTAG		; one-letter tag for the report
+	JSR	PC,@R4			; fill BUF1
+	JSR	PC,DOTEST		; write it, read it back, compare
+	BR	NEXTP
+
+ENDPAS:	INC	PASSNO
+	MOV	#LINE,R4		; "PASS nnnnnn ERRS nnnnnn"
+	MOV	#MPASS,R1
+	JSR	PC,PUTS
+	MOV	PASSNO,R0
+	JSR	PC,PUTOCT
+	MOV	#MERRS,R1
+	JSR	PC,PUTS
+	MOV	NERRS,R0
+	JSR	PC,PUTOCT
+	CLRB	(R4)
+	.PRINT	#LINE
+	BR	LOOP
+
+; ---------------------------------------------------------------------------
+; One pattern: write the buffer out, read it back into the other one, compare.
+; Both directions cross the bus, so both are part of the test.
+;
+DOTEST:	CLR	RPTCNT
+	.WRITW	#AREA,#CHAN,#BUF1,#WRDS,#0
+	BCS	ERRWRT
+	.READW	#AREA,#CHAN,#BUF2,#WRDS,#0
+	BCS	ERRRD
+	MOV	#BUF1,R0
+	MOV	#BUF2,R1
+	MOV	#WRDS,R2
+	CLR	IDX
+CMPLP:	MOV	(R0)+,R3		; expected
+	MOV	(R1)+,R4		; what came back
+	CMP	R3,R4
+	BEQ	CMPNXT
+	INC	NERRS			; every bad word counts, even the ones
+	CMP	RPTCNT,#MAXRPT		; we do not print; the pass line total
+	BGE	CMPNXT			; is therefore always the true figure
+	INC	RPTCNT
+	JSR	PC,REPORT
+CMPNXT:	INC	IDX
+	DEC	R2
+	BNE	CMPLP
+	RTS	PC
+
+; ---------------------------------------------------------------------------
+; Report one bad word.  R3 = expected, R4 = actual, IDX = word within the file.
+; Saves everything, because the compare loop is using most of it.
+;
+REPORT:	MOV	R0,-(SP)
+	MOV	R1,-(SP)
+	MOV	R2,-(SP)
+	MOV	R3,-(SP)
+	MOV	R4,-(SP)
+	MOV	#LINE,R4
+	MOV	#MERR,R1
+	JSR	PC,PUTS
+	MOVB	PTAG,(R4)+		; which pattern
+	MOV	#MBLK,R1
+	JSR	PC,PUTS
+	MOV	IDX,R0			; block = IDX / 256
+	SWAB	R0
+	BIC	#177400,R0
+	JSR	PC,PUTOCT
+	MOV	#MWRD,R1
+	JSR	PC,PUTS
+	MOV	IDX,R0			; word within block = IDX & 377
+	BIC	#177400,R0
+	JSR	PC,PUTOCT
+	MOV	#MEXP,R1
+	JSR	PC,PUTS
+	MOV	2(SP),R0		; expected: R3, two words down
+	JSR	PC,PUTOCT
+	MOV	#MGOT,R1
+	JSR	PC,PUTS
+	MOV	(SP),R0			; actual, as pushed
+	JSR	PC,PUTOCT
+	MOV	#MXOR,R1
+	JSR	PC,PUTS
+	MOV	2(SP),R0		; (a & ~b) | (b & ~a) is the xor,
+	BIC	(SP),R0			; built from BIC and BIS so that no
+	MOV	(SP),R3			; XOR instruction is needed
+	BIC	2(SP),R3
+	BIS	R3,R0
+	JSR	PC,PUTOCT
+	CLRB	(R4)
+	.PRINT	#LINE
+	MOV	(SP)+,R4
+	MOV	(SP)+,R3
+	MOV	(SP)+,R2
+	MOV	(SP)+,R1
+	MOV	(SP)+,R0
+	RTS	PC
+
+; ---------------------------------------------------------------------------
+; Line building.  Everything goes through one buffer and one .PRINT, so the
+; only programmed request involved is the plain .PRINT #address form.
+;
+; PUTS:   R1 -> ASCIZ source, R4 -> destination, both advanced.
+PUTS:	MOVB	(R1)+,R3
+	BEQ	PUTSX
+	MOVB	R3,(R4)+
+	BR	PUTS
+PUTSX:	RTS	PC
+
+; PUTOCT: R0 = value, R4 -> destination.  Six octal digits, always.
+;	  Digits are pushed least significant first and popped back, which
+;	  puts them out most significant first without dividing by anything.
+PUTOCT:	MOV	#6,R2
+PO1:	MOV	R0,R3
+	BIC	#177770,R3		; keep the low three bits
+	ADD	#'0,R3			; make a digit of it
+	MOV	R3,-(SP)
+	CLC				; CLC+ROR is an unsigned shift right;
+	ROR	R0			; ASR would drag the sign bit along
+	CLC
+	ROR	R0
+	CLC
+	ROR	R0
+	DEC	R2
+	BNE	PO1
+	MOV	#6,R2
+PO2:	MOV	(SP)+,R3
+	MOVB	R3,(R4)+
+	DEC	R2
+	BNE	PO2
+	RTS	PC
+
+; ---------------------------------------------------------------------------
+; The patterns.  Each fills BUF1 with WRDS words and returns.
+;
+; WORST: every word reverses all sixteen lines.  The reason this program exists.
+PWORST:	MOV	#BUF1,R0
+	MOV	#WRDS,R1
+PW1:	CLR	(R0)+
+	MOV	#-1,(R0)+
+	SUB	#2,R1
+	BNE	PW1
+	RTS	PC
+
+; COUPLE: adjacent bits in opposition, then swapped.  Coupling, not timing.
+PCOUPL:	MOV	#BUF1,R0
+	MOV	#WRDS,R1
+PC1:	MOV	#052525,(R0)+
+	MOV	#125252,(R0)+
+	SUB	#2,R1
+	BNE	PC1
+	RTS	PC
+
+; WALK: one line changing at a time -- the opposite extreme from WORST, and
+;	what finds a single stuck or swapped bit rather than a supply problem.
+PWALK:	MOV	#BUF1,R0
+	MOV	#WRDS,R1
+PK1:	MOV	#1,R2
+	MOV	#16.,R3
+PK2:	MOV	R2,(R0)+
+	DEC	R1
+	BEQ	PKX
+	CLC
+	ROL	R2
+	DEC	R3
+	BNE	PK2
+	MOV	#1,R2
+	MOV	#16.,R3
+PK3:	MOV	R2,R4
+	COM	R4			; walking zero
+	MOV	R4,(R0)+
+	DEC	R1
+	BEQ	PKX
+	CLC
+	ROL	R2
+	DEC	R3
+	BNE	PK3
+	BR	PK1
+PKX:	RTS	PC
+
+; ADDRS: each word is its own index, so a block that lands in the wrong place
+;	 reads as misplaced instead of merely wrong.
+PADDRS:	MOV	#BUF1,R0
+	MOV	#WRDS,R1
+	CLR	R2
+PA1:	MOV	R2,(R0)+
+	INC	R2
+	DEC	R1
+	BNE	PA1
+	RTS	PC
+
+PATTAB:	.WORD	PWORST,'W
+	.WORD	PCOUPL,'C
+	.WORD	PWALK,'K
+	.WORD	PADDRS,'A
+	.WORD	0
+
+; ---------------------------------------------------------------------------
+ERRENT:	MOV	#MENT,R1
+	BR	FATAL
+ERRWRT:	MOV	#MWRT,R1
+	BR	FATAL
+ERRRD:	MOV	#MRD,R1
+FATAL:	MOV	#LINE,R4
+	JSR	PC,PUTS
+	MOVB	@#USERRB,R0
+	BIC	#177400,R0
+	JSR	PC,PUTOCT
+	CLRB	(R4)
+	.PRINT	#LINE
+	.EXIT
+
+; ---------------------------------------------------------------------------
+MBANNR:	.ASCIZ	/BUSTST - KR1801VP1-055 bus stress. Stop with CTRL-C./
+MPASS:	.ASCIZ	/PASS /
+MERRS:	.ASCIZ	/ ERRS /
+MERR:	.ASCIZ	/ERR /
+MBLK:	.ASCIZ	/ BLK /
+MWRD:	.ASCIZ	/ WRD /
+MEXP:	.ASCIZ	/ EXP /
+MGOT:	.ASCIZ	/ GOT /
+MXOR:	.ASCIZ	/ XOR /
+MENT:	.ASCIZ	/?BUSTST-F-ENTER failed, code /
+MWRT:	.ASCIZ	/?BUSTST-F-WRITE failed, code /
+MRD:	.ASCIZ	/?BUSTST-F-READ failed, code /
+	.EVEN
+
+; The scratch file.  Change DK to MZ0 or MZ1 if you want it somewhere else.
+FILE:	.RAD50	/DK /
+	.RAD50	/BUSTMP/
+	.RAD50	/TMP/
+
+AREA:	.BLKW	10.			; EMT argument block
+LINE:	.BLKB	100.			; one report line
+	.EVEN
+PTAG:	.WORD	0
+IDX:	.WORD	0
+RPTCNT:	.WORD	0
+PASSNO:	.WORD	0
+NERRS:	.WORD	0
+
+BUF1:	.BLKW	WRDS			; what we wrote
+BUF2:	.BLKW	WRDS			; what came back
+
+	.END	START
