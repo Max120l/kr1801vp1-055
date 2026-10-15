@@ -89,6 +89,8 @@ running at all — see [TESTING.md](docs/TESTING.md#4-the-result).
 | [docs/LOGIC.md](docs/LOGIC.md) | what the chip does, traced cell by cell, with the delays |
 | [docs/DESIGN.md](docs/DESIGN.md) | the substitute: parts, pin mapping, timing, what is lost |
 | [docs/TESTING.md](docs/TESTING.md) | bench check, the proof, and bringing it up in the machine |
+| [adapter/](adapter/README.md) | the 42-pin adapter board: generator, routing, gerbers |
+| [bustest/](bustest/README.md) | a FODOS volume of adversarial bus patterns, for the worst case ТЕСТИРОВАНИЕ never produces |
 | `rtl/vp1_055_orig.v` | the original, from its own cells |
 | `rtl/vp1_055_repl.v` | the substitute, from gate primitives |
 | `rtl/lib_1801.v` | the k1801 cell library, vendored unmodified |

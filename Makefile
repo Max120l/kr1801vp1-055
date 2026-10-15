@@ -15,6 +15,24 @@ $(BUILD)/tb_equiv: $(RTL) sim/tb_equiv.v
 
 clean:
 	@rm -rf $(BUILD)
+	@rm -f $(BUSTEST_IMG)
+
+# The bus stress volume: adversarial patterns driven over the bus by disk I/O,
+# because D22 is on the peripheral processor's side and a CPU-side test never
+# reaches it.  See bustest/README.md.
+PYTHON      ?= python3
+BUSTEST_IMG ?= bustest.dsk
+
+.PHONY: bustest bustest-check
+bustest: $(BUSTEST_IMG)
+
+$(BUSTEST_IMG): bustest/make_bustest.py
+	@$(PYTHON) bustest/make_bustest.py -o $@
+
+# The same argument as `mutants`, applied to a disk image written by code that
+# has never been run against a real volume.
+bustest-check:
+	@$(PYTHON) bustest/make_bustest.py --self-test
 
 # A test that cannot fail proves nothing.  Each mutant is a mistake that is one
 # wire or one part number away from the real design, and each must be caught.

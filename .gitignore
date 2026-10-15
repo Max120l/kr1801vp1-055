@@ -1,2 +1,6 @@
 build/
 *.vcd
+
+# generated bus stress volume
+bustest.dsk
+*.dsk
