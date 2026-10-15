@@ -153,7 +153,17 @@ def command_file(dev, iterations, names):
     copy, then reads both back: three passes of the data over the bus, all of it
     through the PP and so through D22.  DIFFERENCES is what makes this
     self-checking; a single wrong word is reported rather than averaged away.
+
+    COPY/IMAGE, not bare COPY.  An ASCII-mode copy does not preserve arbitrary
+    bytes, and WORST.DAT is half nulls -- which would produce a mountain of
+    differences that say nothing whatever about the bus.  The first version of
+    this file left the mode to RT-11 and that was a mistake.
+
+    The procedure opens by comparing a file with itself, which must be silent.
+    An instrument that reports a difference between a file and itself is broken,
+    and finding that out first costs one command.
     """
+    first = "%s%s.%s" % (dev, names[0][0], names[0][1])
     L = [
         "! KR1801VP1-055 bus stress -- GENERATED FILE, do not edit",
         "!",
@@ -166,12 +176,27 @@ def command_file(dev, iterations, names):
         "! the low byte alone points at the V group, which is the half the",
         "! original ran three gate delays slower.",
         "!",
+        "! But first: does the instrument work?  A file compared with itself must",
+        "! print nothing.  If the line below prints, stop -- the fault is in the",
+        "! comparison, not in the machine.",
+        "DIFFERENCES/BINARY %s %s" % (first, first),
+        "!",
+        "! And does an image-mode copy round-trip?  If THIS prints but the line",
+        "! above did not, the copy is at fault and not the bus.  A real",
+        "! transceiver fault is marginal timing: it does not fail at the same",
+        "! offset on every pass, so anything perfectly reproducible is software.",
+        "COPY/IMAGE/NOQUERY %s %sSCRTCH.DAT" % (first, dev),
+        "DIFFERENCES/BINARY %s %sSCRTCH.DAT" % (first, dev),
+        "DELETE/NOQUERY %sSCRTCH.DAT" % dev,
+        "!",
+        "! ---- instrument checked; the soak starts here",
+        "!",
     ]
     for n in range(1, iterations + 1):
         L.append("! ---- iteration %d of %d" % (n, iterations))
         for name, ext, _, _ in names:
             src = "%s%s.%s" % (dev, name, ext)
-            L.append("COPY/NOQUERY %s %sSCRTCH.DAT" % (src, dev))
+            L.append("COPY/IMAGE/NOQUERY %s %sSCRTCH.DAT" % (src, dev))
             L.append("DIFFERENCES/BINARY %s %sSCRTCH.DAT" % (src, dev))
             L.append("DELETE/NOQUERY %sSCRTCH.DAT" % dev)
     L.append("! ---- done; if nothing printed above, every pass compared equal")
