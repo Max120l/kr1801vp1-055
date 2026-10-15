@@ -155,11 +155,19 @@ back, and a verdict rather than a diagnosis. The FODOS volume carries
 `MACRO.SAV`, `LINK.SAV`, `SYSMAC.SML` and `SYSLIB.OBJ` — a complete MACRO-11
 environment — so the test can simply run there instead.
 
+`BUSTST.MAC` is injected onto the volume along with the patterns, converted to
+CR/LF on the way in — RT-11 text files are CR/LF terminated and MACRO would
+otherwise see one enormous line. So it is already there:
+
 ```
 .MACRO BUSTST
 .LINK BUSTST
 .RUN BUSTST
 ```
+
+Assembly needs about 60 blocks for the `.OBJ`, the `.SAV` and the scratch file.
+The `.SAV` is large for what it does — some 34 blocks — because the two
+comparison buffers are 8 KB each and live in the image.
 
 It generates each pattern in memory, writes 16 blocks, reads them back into a
 second buffer, and compares word by word. Both directions cross the bus, so both

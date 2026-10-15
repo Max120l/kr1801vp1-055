@@ -139,6 +139,33 @@ PATTERNS = [
 ]
 
 
+SOURCE = "BUSTST.MAC"
+
+
+def source_file():
+    """
+    The MACRO-11 source, converted for RT-11.
+
+    Text files there are CR/LF terminated; this one is written on a machine
+    that uses bare LF, and MACRO would see a single enormous line.  Tabs are
+    left alone, which is what MACRO-11 column formatting expects, and the
+    trailing block is null padded by the directory writer -- MACRO ignores
+    nulls, so no CTRL/Z is needed.
+
+    Putting the source on the volume is the point: the machine has MACRO.SAV,
+    LINK.SAV, SYSMAC.SML and SYSLIB.OBJ, so it can build the test itself and
+    nothing has to be cross-assembled.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(here, SOURCE), "rb") as f:
+        text = f.read()
+    if b"\r\n" in text:
+        raise SystemExit("%s already has CR/LF; refusing to double-convert" % SOURCE)
+    text = text.replace(b"\n", b"\r\n")
+    name, ext = SOURCE.split(".")
+    return (name, ext, text)
+
+
 def pattern_bytes(fn, blocks):
     nwords = blocks * BLOCK // 2
     return struct.pack("<%dH" % nwords, *fn(nwords))
@@ -304,6 +331,7 @@ def build(total_blocks, file_blocks, dev, iterations):
     for name, ext, fn, _ in PATTERNS:
         files.append((name, ext, pattern_bytes(fn, file_blocks)))
     files.append(("STRESS", "COM", command_file(dev, iterations, PATTERNS)))
+    files.append(source_file())
 
     image = bytearray(b"\x00" * (total_blocks * BLOCK))
 
@@ -839,6 +867,7 @@ def main():
                  for n, e, fn, _d in PATTERNS]
         files.append(("STRESS", "COM",
                       command_file(a.device, a.iterations, PATTERNS)))
+        files.append(source_file())
         image = inject(original, files, force=a.force)
         if not check(image, files, strict=False):
             raise SystemExit("refusing to write an image that does not read back")
