@@ -516,6 +516,90 @@ def inject(image, files, force=False):
                      % (need, need * BLOCK // 1024))
 
 
+def looks_like_text(data):
+    sample = data[:4096]
+    if not sample:
+        return False
+    printable = sum(1 for b in sample if 32 <= b < 127 or b in (9, 10, 13))
+    return printable / len(sample) > 0.85
+
+
+def list_volume(path, dump=True):
+    """
+    List what is on a volume and print anything that reads as text.
+
+    This exists for the return trip: after a run, the interesting content is
+    whatever the machine wrote -- BINCOM's .DIF listings above all -- and
+    reading them off the image beats transcribing them off a screen.
+    """
+    with open(path, "rb") as f:
+        image = f.read()
+    print("%s: %d blocks" % (path, len(image) // BLOCK))
+    files = read_volume(image, strict=False)
+    for name, ext, blocks, data in files:
+        kind = "text" if looks_like_text(data) else "binary"
+        print("  %-6s.%-3s %5d blocks  %s" % (name, ext, blocks, kind))
+    if not dump:
+        return files
+    for name, ext, _blocks, data in files:
+        if ext in ("DIF", "LST", "LOG") or (ext == "COM" and name != "STRESS"):
+            text = data.rstrip(b"\x00").decode("ascii", "replace")
+            print("\n==== %s.%s ====" % (name, ext))
+            print(text.rstrip() or "(empty)")
+    return files
+
+
+def compare_volumes(old_path, new_path):
+    """
+    Name what changed between two images of the same volume.  After a run this
+    is the whole story: files added are what the machine produced, files
+    changed are what it rewrote.
+    """
+    with open(old_path, "rb") as f:
+        old = {(n, e): d for n, e, _b, d in read_volume(f.read(), strict=False)}
+    with open(new_path, "rb") as f:
+        newimg = f.read()
+    new = {(n, e): d for n, e, _b, d in read_volume(newimg, strict=False)}
+
+    added = [k for k in new if k not in old]
+    gone = [k for k in old if k not in new]
+    changed = [k for k in new if k in old and new[k] != old[k]]
+
+    print("added:   %s" % (", ".join("%s.%s" % k for k in added) or "none"))
+    print("removed: %s" % (", ".join("%s.%s" % k for k in gone) or "none"))
+    print("changed: %s" % (", ".join("%s.%s" % k for k in changed) or "none"))
+
+    # A pattern file that changed is the headline: it means the data on the
+    # disk no longer matches what was written to it.
+    patterns = {(n, e) for n, e, _f, _d in PATTERNS}
+    for key in changed:
+        if key not in patterns:
+            continue
+        a, b = old[key], new[key]
+        bad = [i for i in range(0, min(len(a), len(b)), 2) if a[i:i+2] != b[i:i+2]]
+        print("\n!! %s.%s differs on disk, %d words" % (key[0], key[1], len(bad)))
+        for i in bad[:12]:
+            wa = struct.unpack_from("<H", a, i)[0]
+            wb = struct.unpack_from("<H", b, i)[0]
+            print("   block %4d word %3d  wrote %06o  read %06o  xor %06o"
+                  % (i // BLOCK, (i % BLOCK) // 2, wa, wb, wa ^ wb))
+        if bad:
+            xors = {struct.unpack_from("<H", a, i)[0] ^ struct.unpack_from("<H", b, i)[0]
+                    for i in bad}
+            mask = 0
+            for x in xors:
+                mask |= x
+            print("   bits ever wrong: %016s" % format(mask, "016b"))
+            print("   low byte %s, high byte %s"
+                  % ("affected" if mask & 0x00FF else "clean",
+                     "affected" if mask & 0xFF00 else "clean"))
+
+    for key in added:
+        if looks_like_text(new[key]):
+            print("\n==== %s.%s ====" % key)
+            print(new[key].rstrip(b"\x00").decode("ascii", "replace").rstrip())
+
+
 def self_test():
     """
     A checker that cannot fail proves nothing -- the same argument `make
@@ -577,7 +661,19 @@ def main():
                         "instead of building a fresh data volume")
     p.add_argument("--force", action="store_true",
                    help="with --inject, replace files of the same name")
+    p.add_argument("--list", metavar="IMAGE", dest="list_image",
+                   help="list a volume's files and print any that read as text")
+    p.add_argument("--compare", nargs=2, metavar=("BEFORE", "AFTER"),
+                   help="name what changed between two images of a volume")
     a = p.parse_args()
+
+    if a.list_image:
+        list_volume(a.list_image)
+        return 0
+
+    if a.compare:
+        compare_volumes(a.compare[0], a.compare[1])
+        return 0
 
     if a.self_test:
         return self_test()

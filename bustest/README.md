@@ -78,12 +78,18 @@ change.
 - **It cannot force nOE**, so it says nothing about the high-Z release timing
   that [DESIGN.md](../docs/DESIGN.md#timing) flags as the remaining un-analysed
   risk. That one needs a scope.
-- **It depends on `DIFFERENCES/BINARY` existing in your FODOS.** It is a
-  standard RT-11 utility, but FODOS is a clone and this has not been checked on
-  a real machine. If the command is missing, the comparison is the part to
-  replace — the patterns themselves are still the right data.
-- **None of this has been run on hardware.** The generator checks its own
-  output (see below), but no byte of it has reached a UKNC.
+- **`DIFFERENCES/BINARY` does not work on the FODOS 3.0 volume this was tried
+  on.** The first run stopped there. It stopped *after* the copy, though, and
+  the scratch file it left behind was byte-for-byte identical to `WORST.DAT` —
+  so the data is good and only the comparator is missing. See
+  [TESTING.md](../docs/TESTING.md#the-worst-case-measured-once).
+
+  The volume in question carries `MACRO.SAV` and `LINK.SAV`, so the fix is to
+  assemble the comparison on the machine rather than depend on a utility that
+  may not be there.
+- **The patterns are proven; the procedure is not.** One pass of `WORST.DAT`
+  round-tripped exactly. Nothing has yet run the full soak, and nothing has run
+  it hot.
 
 ## Checking the checker
 

@@ -217,6 +217,31 @@ evidence against them:
 Both are *evidence*, not measurement. Neither has been seen on a scope, and the
 stagger has not been tested against a worst-case pattern — see below.
 
+### The worst case, measured once
+
+The first run of [bustest](../bustest/README.md) on a fodos30 volume did produce
+a result, although not the one it was written to collect.
+
+The procedure stopped at its `DIFFERENCES` step — the comparator dependency the
+README had already flagged as unverified on a FODOS clone — but it stopped
+*after* the copy, leaving `SCRTCH.DAT` on the disk. Reading that scratch file
+off the returned image settles the question the comparator was supposed to
+answer: **it is byte-for-byte identical to `WORST.DAT`**, all 25 600 words of it.
+
+So one hundred blocks of alternating `0000`/`FFFF` — the pattern that makes all
+sixteen lines reverse on every single word, which is exactly what the original's
+7.5 ns stagger existed to spread — crossed the bus twice, read and written, with
+no error in any word.
+
+That is a measurement rather than an inference, and it is the first direct
+evidence that two identical '245s switching together is not a problem in this
+machine. It is one pass at room temperature, not a soak and not hot, so it
+bounds the risk rather than closing it.
+
+It also says the copy path itself is sound: `COPY` preserved arbitrary binary
+data faithfully, so RT-11's default is image mode and the pattern files survive
+a round trip through the PP's bus unchanged.
+
 ### As built
 
 | ref | fitted | |
