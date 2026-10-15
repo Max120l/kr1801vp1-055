@@ -2,100 +2,49 @@
 
 Three levels, cheapest first. The first one costs five minutes and can
 invalidate the whole design, so do it before ordering anything. Section 4
-records what actually happened when one was built.
+records what happened when one was actually built, and what it did and did not
+settle.
 
-## 1. Confirm the polarity
+## 1. Confirm the polarity on the bench
 
 Everything here rests on the part being **non-inverting**, which was read off a
 die schematic rather than measured. It is worth ten minutes to check against the
 real chip, because if it is wrong then every '245 in the BOM should be a '640
 and no amount of careful layout will save the board.
 
-There are two ways to do it. Prefer the in-circuit one while the machine still
-runs: it needs no desoldering, and on a 42-pin planar package soldered into a
-machine whose fault is thermal and intermittent, not risking the chip matters
-more than the tidiness of the setup.
+### The carrier
 
-### In the machine, with a scope
+The package fits no breadboard and, with its 0.5 mm square pins, no machined
+receptacle either — the original will not plug into the socket that replaces
+it. A bare adapter PCB solves both problems at once: it is a breakout for the
+chip *and* a plug for the socket, and once built it stays useful as the A/B
+reference against the substitute.
 
-The measurement works in place because **polarity is direction-independent**. A
-non-inverting transceiver holds both sides at the same level whenever it is
-enabled, whichever way it happens to be driving; an inverting one holds them
-complementary. So pin 20 can be left to do whatever the machine is doing with
-it — the direction never enters the reading, and two channels are enough.
+1. Fit the header pins to a bare adapter first (the same round-pin strip as
+   the substitute build), **plastic on the underside**, mating end up through
+   the board. The tail is only ~3 mm and the board takes 1.6 of it, so with
+   the plastic on top there is nothing left to reach the receptacles; on the
+   bottom the plastic is just a 2.5 mm standoff. Trim the stubs above the
+   board to ~1.5 mm.
+2. Set the chip on the top side, **pin 1 at the square pad**, shifted about
+   half a millimetre along the row so that each square pin lies against its
+   stub on the same 1.7 mm pad. Solder each pair with a small blob. The
+   stagger keeps the nearest neighbour 2.8 mm away, so bridges are unlikely.
+   Check pin 1 before the first joint — it is the one thing 42 joints later
+   cannot fix.
+3. The whole stack (receptacle, standoff, board, chip) stands about 10 mm
+   above the motherboard, twice the original. Look at what sits above D22 with
+   the case closed before committing.
 
-What does matter is knowing the part is enabled, because with nOE high both
-sides are high-Z and the two nets are unrelated. The propagation delay supplies
-that for free: while the 055 is driving, one side is a copy of the other lagging
-by the figure below, and which one lags says what the direction was. The
-uncorrelated stretches are the disabled windows; ignore them. No external
-trigger is needed — trigger on ch1 and look for the windows where ch2 tracks it.
-With four channels, put nOE (pin 41) and nA/VW (pin 20) on ch3 and ch4 and the
-windows can be gated directly instead of inferred.
+The open ring pads on the top side are the bench test points: clip onto them
+for the polarity check below. In the machine, the carrier proves the socket
+and the pin height on a chip that is known to run cold, so the first power-up
+of the substitute only tests the substitute — and afterwards the two swap in
+seconds for a hot A/B on the same socket.
 
-Probe **both byte groups**. They are independent claims, not one claim measured
-twice: the V chain carries three `t371` stages and the W chain one, and if the
-die reading has either count wrong then that group inverts and the other does
-not. That is exactly the half-the-bus failure [LOGIC.md](LOGIC.md) warns about,
-and measuring V0 alone leaves it open.
+### The polarity check
 
-| ch1 | ch2 | expected lag | |
-|---|---|---|---|
-| pin 1 (V0) | pin 22 (nA0) | 32.0 ns | low byte, three stages |
-| pin 9 (W0) | pin 30 (nA8) | 24.5 ns | high byte, one stage |
-| pin 38 (C0) | pin 17 (A0) | 21.75 ns | the three-bit buffer |
-
-| what you see | |
-|---|---|
-| ch2 follows ch1, same sense | **non-inverting** ✓ — the '245 stands |
-| ch2 follows ch1, inverted | **inverting** ✗ — every '245 becomes a '640 |
-
-Start with C0 → A0. Its output driver's enable is tied to ground on the die, so
-it is permanently on and tracks continuously with no windows to hunt for — the
-one measurement here that needs no interpretation. It settles a *different*
-question from the byte paths, being the zero-inversion path through the pad's
-`y1` output, so it does not prove the '245 choice on its own. What it does prove
-is whether pin 41 reaches those buffers at all, which is the `MUTANT_C_GATED`
-question and decides whether U3 needs gating.
-
-Bandwidth is not a constraint. The original's output pads are 16.5 ns, so the
-edges are slow and polarity is very nearly a DC relationship: 100 MHz is
-luxurious, and 20 MHz would still answer the go/no-go even if it blurred the
-delays.
-
-Cautions, roughly in the order they will bite:
-
-- **Measure cold**, in the first minutes, while the machine still behaves. If
-  the bit you land on looks mushy, move to another bit in the same group rather
-  than trying to read through it. Marginality does not threaten this particular
-  reading — a dying driver shows up as weak drive, slow edges or a stuck level,
-  whereas inversion is a property of the topology and cannot drift.
-- **10× probes, never 1×.** A 1× probe's 50–100 pF hung on an already marginal
-  output is a good way to finish it off.
-- **The real hazard is mechanical.** 42-pin planar, fine pitch, and a slipped
-  tip shorts two bus lines on a running machine. Where the net is reachable
-  somewhere else — a via, a series resistor pad, the connector, the same net on
-  a neighbouring chip — probe there rather than at the package leg. Short ground
-  spring, not the clip lead.
-
-This also produces the delay-stagger measurement in passing: the two lags should
-land near 32 and 24.5 ns. If they are wildly off, the cell library's typical
-delays do not describe this die revision and the timing section of
-[DESIGN.md](DESIGN.md) is guesswork.
-
-**What it cannot settle.** nOE cannot be forced from outside, so the high-Z
-release check is not reproduced: in place there is no way to distinguish
-"released" from "driving the level the bus already carries". Stretches where the
-two sides are plainly uncorrelated are evidence the part let go — weaker than
-the bench check below, but not nothing.
-
-### On the bench, with the chip out
-
-Worth doing when the chip is out anyway, which — given the above — means when it
-is being replaced. Socket it at that point.
-
-With the original 055 out of the machine, on a breadboard, +5 V on pin 42 and
-ground on pin 21:
+With the original 055 on the carrier, +5 V on pin 42 and ground on pin 21:
 
 | step | | |
 |---|---|---|
@@ -119,6 +68,38 @@ Also worth doing while it is on the bench, since it is the same setup:
 
 Record what you measure. A negative result here is worth more than the rest of
 this repository.
+
+### Without taking the chip out
+
+The same question can be answered with the 055 still in a running machine, two
+scope channels and no desoldering. Worth knowing because it needs neither the
+carrier nor a working socket, and because it is the only version of this check
+that can be repeated later on a machine that has started misbehaving again.
+
+It works because **polarity is direction-independent**: an enabled transceiver
+holds both sides at the same level whichever way it is driving, and an inverting
+one holds them complementary. So pin 20 need not be known or controlled. What
+does matter is knowing the part is enabled, and the propagation delay gives that
+for free — while the 055 is driving, one side is a copy of the other lagging by
+the figure below, and the uncorrelated stretches are the nOE-high windows.
+
+| ch1 | ch2 | expected lag | |
+|---|---|---|---|
+| pin 1 (V0) | pin 22 (nA0) | 32.0 ns | low byte, three stages |
+| pin 9 (W0) | pin 30 (nA8) | 24.5 ns | high byte, one stage |
+| pin 38 (C0) | pin 17 (A0) | 21.75 ns | always enabled, no windows to hunt |
+
+ch2 tracking ch1 in the same sense means non-inverting; tracking it inverted
+means the BOM is wrong. Probe both byte groups: the V chain has three `t371`
+stages and the W chain one, and a wrong count in either inverts that half of the
+bus alone. The two lags also give the delay stagger directly.
+
+Measure cold, in the first minutes, and use 10× probes — a 1× probe's 50–100 pF
+on an already marginal output is a good way to finish it off. The package helps
+here: four staggered rows at 2.5 mm leave the nearest neighbour 2.8 mm away, so
+this is ordinary probing rather than fine-pitch work.
+
+What it cannot do is force nOE, so step 7 above has no in-circuit equivalent.
 
 ## 2. The equivalence proof
 
@@ -173,7 +154,9 @@ run through the ROM socket and need no working machine. In rough order:
 
 1. **Before fitting**, reproduce the fault: from cold the machine runs about ten
    minutes, then fails; cooling D22 brings it back within seconds. That
-   signature is what the substitute has to remove.
+   signature is what the substitute has to remove. With the site already
+   socketed, this is the original on its carrier (section 1) — which also
+   proves the socket and pin height before the substitute ever goes in.
 2. **Fit the substitute** and run the register test (`make_regtest.py`) — it
    touches no memory, so it isolates the bus path this chip is on, and a pass
    takes milliseconds rather than seconds.
@@ -191,23 +174,19 @@ nothing at all.
 
 ## 4. The result
 
-A substitute has been built and fitted as D22. The machine runs: **fourteen
-consecutive passes of its own ТЕСТИРОВАНИЕ with ОШИБОК 0**, and over thirty
-minutes of continuous operation against an original that failed after about ten
-from cold.
+A substitute on adapter revision C has been built and fitted as D22. The machine
+runs: **fourteen consecutive passes of its own ТЕСТИРОВАНИЕ with ОШИБОК 0**, and
+over thirty minutes of continuous operation against an original that failed
+after about ten from cold.
 
-Rung 4 of the ladder above is therefore cleared, and rung 5 is cleared in its
-weaker form — thirty minutes at room temperature, not a deliberate heat soak.
-Rungs 2 and 3 have not been reported.
-
-The as-built parts list is not recorded here. [DESIGN.md](DESIGN.md) remains the
-BOM as reasoned, not the BOM as proven, until someone writes down what is
-actually in the machine.
+Rung 4 of the ladder in section 3 is therefore cleared, and rung 5 in its weaker
+form — thirty minutes at room temperature, not a deliberate heat soak. Rungs 2
+and 3 have not been reported.
 
 ### What the working substitute settles
 
 A running machine is not a weak result here, because the three mistakes the
-simulation guards against are all fatal rather than subtle. Each one would have
+simulation guards against are all fatal rather than subtle. Each would have
 stopped the machine dead, so fourteen clean passes exclude all three:
 
 | | would have caused | status |
@@ -217,25 +196,48 @@ stopped the machine dead, so fourteen clean passes exclude all three:
 | `MUTANT_C_GATED` — U3 enable on pin 41 | A0–A2 dropping out whenever nOE rose | excluded |
 
 The first is the one that mattered. The polarity reading came off a die
-schematic, and §1 above exists because getting it wrong would have invalidated
+schematic, and section 1 exists because getting it wrong would have invalidated
 the entire BOM. A non-inverting board cannot run in place of an inverting part,
 so the machine running **is** the confirmation — a stronger one than the bench
 check would have produced, and it arrived by building the thing rather than by
 measuring first.
 
-Two of the three risks [DESIGN.md](DESIGN.md) flags as un-analysed also now have
+Rev C also fits, which rev A did not. The pin field and the four-row stagger in
+[DESIGN.md](DESIGN.md#form-factor) are confirmed by a board that plugs in.
+
+Two of the three risks [DESIGN.md](DESIGN.md) flags as un-analysed now have
 evidence against them:
 
 - **Release timing.** The substitute lets go of the bus a few nanoseconds sooner
   than a part the circuit was designed around. The envelope evidently has the
   margin.
-- **The lost stagger.** Sixteen modern drivers switching together, with
-  decoupling in place of the original's 7.5 ns split, does not upset the
-  machine.
+- **The lost stagger.** Sixteen drivers switching together, with decoupling in
+  place of the original's 7.5 ns split, does not upset the machine.
 
-Both are *evidence*, not measurement. Neither has been observed on a scope, and
-the stagger in particular has not been tested against a worst-case pattern — see
-below.
+Both are *evidence*, not measurement. Neither has been seen on a scope, and the
+stagger has not been tested against a worst-case pattern — see below.
+
+### As built
+
+| ref | fitted | |
+|---|---|---|
+| U1, U2 | 74AHCT245PWR | TSSOP-20; AHCT as the part-choice argument requires |
+| U3 | 74AHCT125PWR | TSSOP-14, three of four sections used |
+| C1–C3 | 100 nF X7R (LCSC C16082) | one per chip |
+| C4 | 10 µF 16 V X5R (Samsung CL21A106K0FNNNE) | bulk |
+| board | adapter rev C | [adapter/](../adapter/README.md) |
+
+Two notes on the substitutions, neither of them a problem in the running unit:
+
+- **C4 is X5R where the table says ceramic.** X5R is rated to +85 °C against
+  X7R's +125 °C, which is worth remembering in a machine whose defining fault
+  was thermal. The 16 V rating is the more important number and it is generous:
+  a 10 µF ceramic on a 5 V rail keeps most of its capacitance only because it is
+  so far from its voltage limit.
+- **The '125's fourth section is spare.** An unused CMOS input must be tied, not
+  left floating, or it self-biases near threshold and draws supply current —
+  precisely the noise this design spends four capacitors avoiding. Worth
+  confirming against the rev C netlist.
 
 ### Still worth running
 
@@ -245,25 +247,25 @@ from the original, which is the simultaneous switching of all sixteen drivers.
 
 - **An adversarial disk verify.** With a floppy emulator available, write a file
   whose words alternate `0000`/`FFFF`, read it back and compare. Every transfer
-  then forces all sixteen drivers to reverse together, which is precisely what
-  the original's stagger existed to spread. Follow it with `5555`/`AAAA` for
-  adjacent-bit coupling and a walking one for stuck bits. A self-checking
-  data-dependent loop is a better instrument for a transceiver than any
-  pass/fail selftest, because a single bad bit surfaces as a mismatch instead of
-  being averaged away.
+  then forces all sixteen lines to reverse together, which is what the stagger
+  existed to spread. Follow with `5555`/`AAAA` for adjacent-bit coupling and a
+  walking one for stuck bits. A self-checking, data-dependent loop is a better
+  instrument for a transceiver than any pass/fail selftest, because one bad bit
+  surfaces as a mismatch instead of being averaged away. Note the traffic has to
+  reach the peripheral processor's side of the bus to touch this chip at all,
+  which is why disk I/O is the right vehicle and a CPU-side memory test is not.
 - **Sustained I/O.** Long disk-to-disk copies and verifies keep the PP's side of
-  the bus busy for hours, which is the closest thing to a realistic soak.
+  the bus busy for hours.
 - **Rungs 2 and 3**, the `make_regtest.py` and `make_ramtest.py` instruments
   from onerom-1801re2. The register test isolates this bus path specifically,
   which no amount of whole-machine testing does.
 - **Heat, deliberately.** Not because the logic will fail — a modern
   transceiver will not — but because a hand-built assembly's joints and leads
   move when warm, and that is the failure that otherwise appears in six months.
-  Warm the area while a verify loop runs.
-- **Power cycles.** Twenty cold starts. Enable-envelope margin is exactly the
-  kind of thing that shows up as an intermittent failure to boot rather than as
-  a wrong bit.
-- **The scope check DESIGN.md asks for**, which is now easy and non-destructive:
-  nOE against nA during a read on the fitted substitute, confirming data is
-  still valid when the strobe takes it. This is the one remaining un-analysed
-  risk, and it can now be measured on the working board rather than predicted.
+- **Power cycles.** Twenty cold starts. Enable-envelope margin shows up as an
+  intermittent failure to boot rather than as a wrong bit, so no soak finds it.
+- **A hot A/B on the socket**, which the carrier makes a seconds-long swap: the
+  original back in, warmed until it dies, then the substitute in the same site
+  under the same heat. That is the comparison the whole project is for.
+- **The scope check [DESIGN.md](DESIGN.md) asks for** — nOE against nA during a
+  read — now easy and non-destructive on the fitted substitute.

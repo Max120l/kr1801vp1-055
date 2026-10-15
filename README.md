@@ -1,7 +1,8 @@
 # A replacement for the КР1801ВП1-055
 
 The 055 is a Soviet gate-array bus transceiver: sixteen bidirectional lines plus
-three unidirectional buffers, in a 42-pin planar package. It cannot be bought,
+three unidirectional buffers, in a 42-pin through-hole package with the pins
+in four staggered rows. It cannot be bought,
 and the only machine known to use it is the **Elektronika MS 0511 (UKNC)**,
 where it is **D22** — sitting between the peripheral processor and the MPI bus,
 so when it fails the machine fails in ways that look like everything except a
@@ -10,15 +11,21 @@ transceiver.
 This repository works out what the chip does, proves a substitute built from
 catalogue parts behaves identically, and lists what to buy.
 
-**Status: built, fitted, and working in the machine.** A substitute has been
-assembled and installed as D22 in the UKNC this project came from. The machine
-passes its own ТЕСТИРОВАНИЕ — **fourteen consecutive passes, ОШИБОК 0** — and has
-run over thirty minutes continuously, against an original that failed after
-about ten from cold. That also settles the polarity finding below: see
-[TESTING.md](docs/TESTING.md#what-the-working-substitute-settles).
+**Status: built, fitted, and working in the machine.** The fault this repository
+exists for was confirmed on the machine in September 2026 by two independent
+methods: cooling D22 alone keeps the failing MS 0511 running, and a CPU-side RAM
+canary (in onerom-1801re2, `diag/canary`) shows every plane on the CPU's side of
+the bus staying clean for hundreds of passes while the peripheral processor —
+the side behind D22 — dies hot: black screen, no console bell, keyboard and
+hardware reset both ineffective until the machine cools. The 055 was the part to
+replace.
 
-Still open: the as-built parts list is not recorded here, there is no PCB, and
-the bench measurements that need the original out of circuit have not been done.
+A substitute on **adapter revision C** now runs in that site. The machine passes
+its own ТЕСТИРОВАНИЕ **fourteen consecutive times with ОШИБОК 0** and has run
+over thirty minutes continuously, against an original that failed after about
+ten from cold. That also settles the polarity finding below, more cheaply than
+the bench check written for it —
+[TESTING.md](docs/TESTING.md#4-the-result).
 
 ## The two findings
 
@@ -71,10 +78,9 @@ The reference model is structural: it instantiates the k1801 project's own cell
 library, wired the way the die schematic wires it, rather than describing what
 the chip is believed to do. Needs Icarus Verilog.
 
-The machine then agrees with the simulation: a board built to this design runs
+The machine then agreed with the simulation: a board built to this design runs
 as D22, and all three mutants above describe mistakes that would have stopped it
-running at all. See
-[TESTING.md](docs/TESTING.md#what-the-working-substitute-settles).
+running at all — see [TESTING.md](docs/TESTING.md#4-the-result).
 
 ## Files
 
@@ -90,22 +96,24 @@ running at all. See
 
 ## What is not done
 
-- **No PCB.** The 42-pin planar footprint is the hard part and is untouched.
-  [DESIGN.md](docs/DESIGN.md#form-factor) lists the options. The working unit
-  did not need one, so a layout is now a tidiness question rather than a
-  prerequisite.
-- **The as-built parts list is not recorded.** The working unit's actual part
-  numbers, logic family and construction are not written down here, so
-  [DESIGN.md](docs/DESIGN.md) is still the BOM as reasoned rather than the BOM
-  as proven.
+- **The PCB is at revision C** — [adapter/](adapter/README.md): a 31 × 32 mm
+  two-layer board with the three chips on top and a 42-pin field in the
+  measured four-row site geometry underneath, generated and routed by script,
+  gerbers included. Revision A was fabricated and did not fit: it mirrored the
+  two sides, and the real package's sides are translated copies (rows
+  10 · 11 · 10 · 11 with pin 1 top-left, pin 1 in the inner row). Rev C
+  corrects the field, and is the revision now fabricated and running in the
+  machine.
 - **The bench measurements are not done.** The high-Z release check needs the
-  original out of circuit and nOE driven by hand; nothing here has measured it.
-  See [TESTING.md](docs/TESTING.md#1-confirm-the-polarity).
-- **The delay stagger is still not reproduced** — two identical '245s switch
-  together where the original spread its two bytes 7.5 ns apart to limit the
-  supply transient. The machine runs anyway, so decoupling appears to be a
-  sufficient answer at this scale; it was never solved, only out-voted by the
-  result.
+  original out of circuit with nOE driven by hand, and nothing has put a scope
+  on the release edge of either part. See
+  [TESTING.md](docs/TESTING.md#1-confirm-the-polarity-on-the-bench).
+- **The delay stagger is still not reproduced.** The original deliberately makes
+  its two bytes 7.5 ns apart to spread the supply current when sixteen drivers
+  switch; two identical '245s switch together, and the answer is decoupling. The
+  machine runs, so that appears to be sufficient — but nothing has yet driven
+  all sixteen lines through `0000`/`FFFF` on purpose, which is the worst case
+  the stagger existed to spread. It was out-voted by the result, not solved.
 
 ## Credits
 
