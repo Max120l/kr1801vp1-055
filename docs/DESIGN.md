@@ -74,6 +74,11 @@ reasons it is probably fine, and one thing to check:
 - **Check it anyway** with a scope: nOE against nA during a read, before and
   after. [TESTING.md](TESTING.md) has the procedure.
 
+A built substitute has since run in the machine without trouble, which is
+evidence that the margin is there but is not the measurement — nobody has put a
+scope on the release edge yet. The check is easier now than when this was
+written, because it can be done on the working board instead of the original.
+
 If a hold problem ever does appear, the fix is an RC on the enable line rather
 than a slower logic family — the data paths are fine and slowing them would give
 back margin that is currently helping.
@@ -90,7 +95,11 @@ decoupling are far better than 1980s practice. The answer is C1–C3 as close to
 the power pins as the layout allows, and the 10 µF nearby.
 
 If it ever proves to matter, the cheap experiment is a series resistor pack —
-22–33 Ω — on one byte, but measure before adding parts.
+22–33 Ω — on one byte, but measure before adding parts. So far it has not
+proved to matter: a built unit runs without it. That is not a worst-case
+result, though, because nothing has yet driven all sixteen lines through
+`0000`/`FFFF` transitions on purpose — see
+[TESTING.md](TESTING.md#still-worth-running).
 
 ### Why not a delay line
 

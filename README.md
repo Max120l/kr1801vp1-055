@@ -10,11 +10,15 @@ transceiver.
 This repository works out what the chip does, proves a substitute built from
 catalogue parts behaves identically, and lists what to buy.
 
-**Status: logic settled and proven in simulation. Nothing built yet, nothing
-tested on hardware.** The polarity finding below should be confirmed on a real
-chip before anyone orders parts —
-[TESTING.md](docs/TESTING.md#1-confirm-the-polarity) is a ten-minute check, and
-it can be done with the chip still in the machine.
+**Status: built, fitted, and working in the machine.** A substitute has been
+assembled and installed as D22 in the UKNC this project came from. The machine
+passes its own ТЕСТИРОВАНИЕ — **fourteen consecutive passes, ОШИБОК 0** — and has
+run over thirty minutes continuously, against an original that failed after
+about ten from cold. That also settles the polarity finding below: see
+[TESTING.md](docs/TESTING.md#what-the-working-substitute-settles).
+
+Still open: the as-built parts list is not recorded here, there is no PCB, and
+the bench measurements that need the original out of circuit have not been done.
 
 ## The two findings
 
@@ -28,11 +32,14 @@ the low byte, two in the high byte, zero in the three-bit buffer. The `nA0–nA1
 pin naming records the bus's active-low convention, not an inversion across this
 part. So the substitute is the **74x245**, not the '640.
 
-That second one is a correction. Earlier notes in the sibling
+That second one is a correction, and it is now settled on hardware rather than
+only on the die. Earlier notes in the sibling
 [onerom-1801re2](https://github.com/Max120l/onerom-1801re2) repository called
 the part inverting and recommended the '640, reasoning from the bus rather than
 from the die. Building that would have inverted the machine's entire address and
-data bus. `make mutants` builds it deliberately and shows the test rejecting it.
+data bus. `make mutants` builds it deliberately and shows the test rejecting it —
+and a '245-based board now runs in the machine, which a non-inverting substitute
+for an inverting part could not do.
 
 ## The substitute
 
@@ -64,6 +71,11 @@ The reference model is structural: it instantiates the k1801 project's own cell
 library, wired the way the die schematic wires it, rather than describing what
 the chip is believed to do. Needs Icarus Verilog.
 
+The machine then agrees with the simulation: a board built to this design runs
+as D22, and all three mutants above describe mistakes that would have stopped it
+running at all. See
+[TESTING.md](docs/TESTING.md#what-the-working-substitute-settles).
+
 ## Files
 
 | | |
@@ -79,14 +91,21 @@ the chip is believed to do. Needs Icarus Verilog.
 ## What is not done
 
 - **No PCB.** The 42-pin planar footprint is the hard part and is untouched.
-  [DESIGN.md](docs/DESIGN.md#form-factor) lists the options; flying leads to a
-  small board are enough to prove the design before anyone draws a layout.
-- **No hardware test.** Everything here is a reading of a schematic and a
-  simulation of that reading.
-- **The delay stagger is not reproduced.** The original deliberately makes its
-  two bytes 7.5 ns apart to spread the supply current when sixteen drivers
-  switch. Two identical '245s switch together; the answer is decoupling, and it
-  is discussed rather than solved.
+  [DESIGN.md](docs/DESIGN.md#form-factor) lists the options. The working unit
+  did not need one, so a layout is now a tidiness question rather than a
+  prerequisite.
+- **The as-built parts list is not recorded.** The working unit's actual part
+  numbers, logic family and construction are not written down here, so
+  [DESIGN.md](docs/DESIGN.md) is still the BOM as reasoned rather than the BOM
+  as proven.
+- **The bench measurements are not done.** The high-Z release check needs the
+  original out of circuit and nOE driven by hand; nothing here has measured it.
+  See [TESTING.md](docs/TESTING.md#1-confirm-the-polarity).
+- **The delay stagger is still not reproduced** — two identical '245s switch
+  together where the original spread its two bytes 7.5 ns apart to limit the
+  supply transient. The machine runs anyway, so decoupling appears to be a
+  sufficient answer at this scale; it was never solved, only out-voted by the
+  result.
 
 ## Credits
 

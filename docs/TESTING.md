@@ -1,7 +1,8 @@
 # Testing
 
 Three levels, cheapest first. The first one costs five minutes and can
-invalidate the whole design, so do it before ordering anything.
+invalidate the whole design, so do it before ordering anything. Section 4
+records what actually happened when one was built.
 
 ## 1. Confirm the polarity
 
@@ -187,3 +188,82 @@ run through the ROM socket and need no working machine. In rough order:
 Step 1 is the one people skip and the one that makes the rest mean something: if
 the machine is not currently failing, a working machine afterwards proves
 nothing at all.
+
+## 4. The result
+
+A substitute has been built and fitted as D22. The machine runs: **fourteen
+consecutive passes of its own ТЕСТИРОВАНИЕ with ОШИБОК 0**, and over thirty
+minutes of continuous operation against an original that failed after about ten
+from cold.
+
+Rung 4 of the ladder above is therefore cleared, and rung 5 is cleared in its
+weaker form — thirty minutes at room temperature, not a deliberate heat soak.
+Rungs 2 and 3 have not been reported.
+
+The as-built parts list is not recorded here. [DESIGN.md](DESIGN.md) remains the
+BOM as reasoned, not the BOM as proven, until someone writes down what is
+actually in the machine.
+
+### What the working substitute settles
+
+A running machine is not a weak result here, because the three mistakes the
+simulation guards against are all fatal rather than subtle. Each one would have
+stopped the machine dead, so fourteen clean passes exclude all three:
+
+| | would have caused | status |
+|---|---|---|
+| `MUTANT_INVERTING` — '640 for '245 | the whole address and data bus inverted | excluded |
+| `MUTANT_DIR` — DIR backwards | every transfer driving the wrong way | excluded |
+| `MUTANT_C_GATED` — U3 enable on pin 41 | A0–A2 dropping out whenever nOE rose | excluded |
+
+The first is the one that mattered. The polarity reading came off a die
+schematic, and §1 above exists because getting it wrong would have invalidated
+the entire BOM. A non-inverting board cannot run in place of an inverting part,
+so the machine running **is** the confirmation — a stronger one than the bench
+check would have produced, and it arrived by building the thing rather than by
+measuring first.
+
+Two of the three risks [DESIGN.md](DESIGN.md) flags as un-analysed also now have
+evidence against them:
+
+- **Release timing.** The substitute lets go of the bus a few nanoseconds sooner
+  than a part the circuit was designed around. The envelope evidently has the
+  margin.
+- **The lost stagger.** Sixteen modern drivers switching together, with
+  decoupling in place of the original's 7.5 ns split, does not upset the
+  machine.
+
+Both are *evidence*, not measurement. Neither has been observed on a scope, and
+the stagger in particular has not been tested against a worst-case pattern — see
+below.
+
+### Still worth running
+
+Nothing above specifically stresses the one place this design knowingly departs
+from the original, which is the simultaneous switching of all sixteen drivers.
+ТЕСТИРОВАНИЕ chooses its own patterns and may never produce the worst case.
+
+- **An adversarial disk verify.** With a floppy emulator available, write a file
+  whose words alternate `0000`/`FFFF`, read it back and compare. Every transfer
+  then forces all sixteen drivers to reverse together, which is precisely what
+  the original's stagger existed to spread. Follow it with `5555`/`AAAA` for
+  adjacent-bit coupling and a walking one for stuck bits. A self-checking
+  data-dependent loop is a better instrument for a transceiver than any
+  pass/fail selftest, because a single bad bit surfaces as a mismatch instead of
+  being averaged away.
+- **Sustained I/O.** Long disk-to-disk copies and verifies keep the PP's side of
+  the bus busy for hours, which is the closest thing to a realistic soak.
+- **Rungs 2 and 3**, the `make_regtest.py` and `make_ramtest.py` instruments
+  from onerom-1801re2. The register test isolates this bus path specifically,
+  which no amount of whole-machine testing does.
+- **Heat, deliberately.** Not because the logic will fail — a modern
+  transceiver will not — but because a hand-built assembly's joints and leads
+  move when warm, and that is the failure that otherwise appears in six months.
+  Warm the area while a verify loop runs.
+- **Power cycles.** Twenty cold starts. Enable-envelope margin is exactly the
+  kind of thing that shows up as an intermittent failure to boot rather than as
+  a wrong bit.
+- **The scope check DESIGN.md asks for**, which is now easy and non-destructive:
+  nOE against nA during a read on the fitted substitute, confirming data is
+  still valid when the strobe takes it. This is the one remaining un-analysed
+  risk, and it can now be measured on the working board rather than predicted.
