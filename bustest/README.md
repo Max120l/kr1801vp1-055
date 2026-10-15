@@ -50,16 +50,51 @@ unchanged.
 Then, on the machine:
 
 ```
-.@MZ1:STRESS
+.@MZ0:STRESS
 ```
 
-Each iteration copies a pattern, compares the copy back, and deletes it — three
-passes of the data across the bus per file. **Silence is a pass.** Any
-`DIFFERENCES` output at all is a finding.
+It prints nothing and checks nothing locally, because the machine has no
+comparator — see below. Each pattern is copied down a chain of links and the
+last link is kept. Hand the image back and the comparison happens here:
 
-`--device` sets the volume name baked into the procedure if it does not mount as
-`MZ1:`, `--iterations` the number of passes, `--file-blocks` the size of each
-pattern.
+```console
+$ python3 make_bustest.py --verify-outputs fodos-after.dsk --file-blocks 80
+  WORST  -> OWORST  20480 words, all correct
+  COUPLE -> OCOUPL  20480 words, all correct
+  WALK   -> OWALK   20480 words, all correct
+  ADDRS  -> OADDRS  20480 words, all correct
+every chain output matches its pattern: no error anywhere in any link
+```
+
+`--device` sets the volume name baked into the procedure, `--iterations` the
+chain depth, `--file-blocks` the size of each pattern. Pass the same
+`--file-blocks` to `--verify-outputs` that you passed when building, since that
+is how the expected pattern is regenerated.
+
+## Why a chain, and why the comparison is off-machine
+
+The first version compared each copy on the spot with `DIFFERENCES/BINARY`. That
+cannot work on the volume this was built for: `?KMON-F-File not found
+SY:BINCOM.SAV`. RT-11's binary compare lives in `BINCOM.SAV` and FODOS 3.0 does
+not ship it, so no switch helps.
+
+So the comparison moved off the machine, and the disk does something a missing
+utility cannot stop it doing — it copies:
+
+```
+pattern -> A -> B -> A -> B -> ...        (deleting behind itself)
+```
+
+A corrupted word is copied forward faithfully by every subsequent link, so **an
+error introduced by any link is still present in the last one.** Comparing only
+the final file against its pattern therefore detects corruption from any pass,
+not just the most recent. That buys unlimited soak depth for two files' worth of
+free space, with no machine-side dependency beyond `COPY` and `DELETE` — both
+already proven on this volume, `COPY` byte-exactly.
+
+The one blind spot is a second error flipping the same bit of the same word
+back. Two independent single-bit errors colliding like that is not a failure
+mode worth designing around.
 
 ## Reading a failure
 
@@ -78,18 +113,20 @@ change.
 - **It cannot force nOE**, so it says nothing about the high-Z release timing
   that [DESIGN.md](../docs/DESIGN.md#timing) flags as the remaining un-analysed
   risk. That one needs a scope.
-- **`DIFFERENCES/BINARY` does not work on the FODOS 3.0 volume this was tried
-  on.** The first run stopped there. It stopped *after* the copy, though, and
-  the scratch file it left behind was byte-for-byte identical to `WORST.DAT` —
-  so the data is good and only the comparator is missing. See
-  [TESTING.md](../docs/TESTING.md#the-worst-case-measured-once).
-
-  The volume in question carries `MACRO.SAV` and `LINK.SAV`, so the fix is to
-  assemble the comparison on the machine rather than depend on a utility that
-  may not be there.
-- **The patterns are proven; the procedure is not.** One pass of `WORST.DAT`
-  round-tripped exactly. Nothing has yet run the full soak, and nothing has run
-  it hot.
+- **It reports nothing while running.** A chain gives no feedback until the
+  image comes back, which is fine for an overnight soak and poor for watching.
+  The volume carries `MACRO.SAV`, `LINK.SAV`, `SYSMAC.SML` and `SYSLIB.OBJ` — a
+  complete MACRO-11 environment — so a program that generates, writes, reads
+  and compares in a loop, printing the failing block, word and bit mask as it
+  goes, could be assembled on the machine. That is the better instrument and it
+  is not written yet.
+- **A floppy error and a bus error look alike.** Anything this finds is
+  corruption somewhere between the disk surface and memory; D22 is the most
+  interesting suspect but not the only one.
+- **The patterns are proven; the full soak is not.** One pass of `WORST.DAT`
+  round-tripped exactly — see
+  [TESTING.md](../docs/TESTING.md#the-worst-case-measured-once). Nothing has yet
+  run the chain to completion, and nothing has run it hot.
 
 ## Checking the checker
 

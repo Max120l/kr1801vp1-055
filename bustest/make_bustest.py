@@ -30,7 +30,11 @@ Usage:
 """
 
 import argparse
+import contextlib
 import datetime
+import io
+import os
+import tempfile
 import struct
 import sys
 
@@ -144,63 +148,151 @@ def pattern_bytes(fn, blocks):
 # the command procedure
 # --------------------------------------------------------------------------
 
+def out_name(name):
+    """Where a pattern's chain ends up.  Six characters, like everything here."""
+    return ("O" + name)[:6]
+
+
+CHAIN_A, CHAIN_B = "CHAINA", "CHAINB"
+
+
 def command_file(dev, iterations, names):
     """
-    An RT-11 indirect command file.  KMON has no loop construct, so the body is
-    simply emitted `iterations` times -- which is fine in a generated file.
+    An RT-11 indirect command file that needs no comparator on the machine.
 
-    COPY then DIFFERENCES/BINARY means every pass reads the pattern, writes a
-    copy, then reads both back: three passes of the data over the bus, all of it
-    through the PP and so through D22.  DIFFERENCES is what makes this
-    self-checking; a single wrong word is reported rather than averaged away.
+    The first version compared each copy with DIFFERENCES/BINARY, which cannot
+    work on a FODOS volume without BINCOM.SAV -- and the one this was built for
+    does not have it.  There is no switch for a missing utility.
 
-    COPY/IMAGE, not bare COPY.  An ASCII-mode copy does not preserve arbitrary
-    bytes, and WORST.DAT is half nulls -- which would produce a mountain of
-    differences that say nothing whatever about the bus.  The first version of
-    this file left the mode to RT-11 and that was a mistake.
+    So the comparison moves off the machine, and the disk does something a
+    missing utility cannot stop it doing: it copies a pattern down a chain.
+    Pattern -> A -> B -> A -> B ..., deleting behind itself, and the last link
+    is left on the volume.  A corrupted word is copied forward faithfully by
+    every subsequent link, so it survives to the end: comparing only the final
+    file against the pattern it came from detects an error introduced by ANY
+    pass, not just the last.  (A second error flipping the same bit back would
+    hide the first.  Two independent single-bit errors landing on the same bit
+    of the same word is not a failure mode worth designing around.)
 
-    The procedure opens by comparing a file with itself, which must be silent.
-    An instrument that reports a difference between a file and itself is broken,
-    and finding that out first costs one command.
+    That buys unlimited soak depth for two files' worth of free space, with no
+    dependency on the machine beyond COPY and DELETE -- both of which are
+    already proven on this volume, COPY byte-exactly.
     """
-    first = "%s%s.%s" % (dev, names[0][0], names[0][1])
     L = [
         "! KR1801VP1-055 bus stress -- GENERATED FILE, do not edit",
         "!",
-        "! Boot your own FODOS system volume, mount this one as %s, then:" % dev,
-        "!     @%sSTRESS" % dev,
+        "! Boot FODOS, then:   @%sSTRESS" % dev,
         "!",
-        "! Every iteration copies each pattern and compares it back.  Silence is",
-        "! a pass.  Any DIFFERENCES output at all is a finding: note the file and",
-        "! the word offset, because which BITS differ is the interesting part --",
-        "! the low byte alone points at the V group, which is the half the",
-        "! original ran three gate delays slower.",
+        "! This prints nothing and checks nothing on the machine: there is no",
+        "! BINCOM.SAV here, so DIFFERENCES cannot run.  Instead each pattern is",
+        "! copied down a chain of %d links and the last link is kept.  An error" % iterations,
+        "! in any link is copied forward by the rest, so it is still there at the",
+        "! end.  Hand the image back and the comparison happens off the machine:",
+        "!     make_bustest.py --verify-outputs <image>",
         "!",
-        "! But first: does the instrument work?  A file compared with itself must",
-        "! print nothing.  If the line below prints, stop -- the fault is in the",
-        "! comparison, not in the machine.",
-        "DIFFERENCES/BINARY %s %s" % (first, first),
-        "!",
-        "! And does an image-mode copy round-trip?  If THIS prints but the line",
-        "! above did not, the copy is at fault and not the bus.  A real",
-        "! transceiver fault is marginal timing: it does not fail at the same",
-        "! offset on every pass, so anything perfectly reproducible is software.",
-        "COPY/IMAGE/NOQUERY %s %sSCRTCH.DAT" % (first, dev),
-        "DIFFERENCES/BINARY %s %sSCRTCH.DAT" % (first, dev),
-        "DELETE/NOQUERY %sSCRTCH.DAT" % dev,
-        "!",
-        "! ---- instrument checked; the soak starts here",
+        "! Expect silence and a long wait.  Anything printed is an error -- most",
+        "! likely a full volume, which means fewer links or smaller patterns.",
         "!",
     ]
-    for n in range(1, iterations + 1):
-        L.append("! ---- iteration %d of %d" % (n, iterations))
-        for name, ext, _, _ in names:
-            src = "%s%s.%s" % (dev, name, ext)
-            L.append("COPY/IMAGE/NOQUERY %s %sSCRTCH.DAT" % (src, dev))
-            L.append("DIFFERENCES/BINARY %s %sSCRTCH.DAT" % (src, dev))
-            L.append("DELETE/NOQUERY %sSCRTCH.DAT" % dev)
-    L.append("! ---- done; if nothing printed above, every pass compared equal")
+    for name, ext, _, _ in names:
+        src = "%s%s.%s" % (dev, name, ext)
+        a = "%s%s.DAT" % (dev, CHAIN_A)
+        b = "%s%s.DAT" % (dev, CHAIN_B)
+        L.append("! ======== %s.%s down %d links" % (name, ext, iterations))
+        L.append("COPY/IMAGE/NOQUERY %s %s" % (src, a))
+        for n in range(iterations):
+            L.append("COPY/IMAGE/NOQUERY %s %s" % (a, b))
+            L.append("DELETE/NOQUERY %s" % a)
+            L.append("COPY/IMAGE/NOQUERY %s %s" % (b, a))
+            L.append("DELETE/NOQUERY %s" % b)
+        L.append("COPY/IMAGE/NOQUERY %s %s%s.DAT" % (a, dev, out_name(name)))
+        L.append("DELETE/NOQUERY %s" % a)
+    L.append("! ---- done.  Return the image; the outputs carry the verdict.")
     return ("\n".join(L) + "\n").encode("ascii")
+
+
+def free_blocks(image):
+    """Largest contiguous free area the directory knows about, in blocks."""
+    first = locate_directory(image, strict=False)
+    best, seg_no = 0, 1
+    while seg_no:
+        base = (first + (seg_no - 1) * DIR_SEG_BLOCKS) * BLOCK
+        _t, nxt, _h, extra, _s = struct.unpack_from("<5H", image, base)
+        esize = ENTRY_WORDS * 2 + extra
+        off = base + 10
+        while True:
+            (status,) = struct.unpack_from("<H", image, off)
+            if status == E_EOS:
+                break
+            ent = struct.unpack_from("<7H", image, off)
+            if status & E_MPTY:
+                best = max(best, ent[4])
+            off += esize
+        seg_no = nxt
+    return best
+
+
+def verify_outputs(path, file_blocks):
+    """
+    Check the chain outputs on a returned volume against the patterns they came
+    from.  This is the comparator the machine does not have.
+    """
+    with open(path, "rb") as f:
+        image = f.read()
+    vol = {(n, e): d for n, e, _b, d in read_volume(image, strict=False)}
+
+    found = False
+    worst_mask = 0
+    for name, ext, fn, _desc in PATTERNS:
+        key = (out_name(name), "DAT")
+        if key not in vol:
+            print("  %-6s -> %-6s  not on the volume (chain did not finish)"
+                  % (name, out_name(name)))
+            continue
+        found = True
+        got = vol[key]
+        want = pattern_bytes(fn, file_blocks)
+        n = min(len(got), len(want))
+        bad = [i for i in range(0, n, 2) if got[i:i + 2] != want[i:i + 2]]
+        if not bad:
+            print("  %-6s -> %-6s  %d words, all correct" % (name, out_name(name), n // 2))
+            continue
+        mask = 0
+        for i in bad:
+            wa = struct.unpack_from("<H", want, i)[0]
+            wb = struct.unpack_from("<H", got, i)[0]
+            mask |= wa ^ wb
+        worst_mask |= mask
+        print("  %-6s -> %-6s  %d of %d words WRONG"
+              % (name, out_name(name), len(bad), n // 2))
+        for i in bad[:8]:
+            wa = struct.unpack_from("<H", want, i)[0]
+            wb = struct.unpack_from("<H", got, i)[0]
+            print("      block %4d word %3d  wrote %06o  read %06o  xor %06o"
+                  % (i // BLOCK, (i % BLOCK) // 2, wa, wb, wa ^ wb))
+        print("      bits ever wrong: %s" % format(mask, "016b"))
+
+    if not found:
+        print("no chain outputs at all -- the procedure did not run, or the"
+              " volume filled before the first chain completed")
+        return 1
+    if not worst_mask:
+        print("every chain output matches its pattern: no error anywhere in"
+              " any link")
+        return 0
+    lo, hi = worst_mask & 0x00FF, worst_mask & 0xFF00
+    print("\nlow byte %s, high byte %s"
+          % ("AFFECTED" if lo else "clean", "AFFECTED" if hi else "clean"))
+    if lo and not hi:
+        print("low byte alone is the V group -- the half the original ran three"
+              " gate delays slower, and the signature onerom predicted for the"
+              " failing gate array.  On a substitute whose bytes are equally"
+              " fast it should not appear.")
+    elif hi and lo:
+        print("both bytes affected: not the V/W asymmetry.  Sixteen drivers"
+              " switching together is the thing this design does differently"
+              " from the original -- see the series resistor pack in DESIGN.md.")
+    return 1
 
 
 # --------------------------------------------------------------------------
@@ -637,6 +729,60 @@ def self_test():
             print("  NOT CAUGHT  %s" % label)
             ok = False
 
+    # The chain outputs are checked off-machine, so that comparator needs the
+    # same treatment: a clean run must verify, and a single flipped bit must not.
+    print("chain verification")
+    outs = [(out_name(n), "DAT", pattern_bytes(fn, 8)) for n, _e, fn, _d in PATTERNS]
+    done = inject(image, outs)
+    def verify(img):
+        fd, path = tempfile.mkstemp(suffix=".dsk")
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(img)
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = verify_outputs(path, 8)
+            return rc, buf.getvalue()
+        finally:
+            os.unlink(path)
+
+    rc, text = verify(done)
+    if rc == 0 and "no error anywhere" in text:
+        print("  a clean chain verifies")
+    else:
+        print("  FAIL  a clean chain did not verify:\n%s" % text)
+        ok = False
+
+    broken = bytearray(done)
+    # find OWORST.DAT on the volume and flip one bit in it
+    first = locate_directory(broken, strict=False)
+    base = first * BLOCK
+    _t, _n, _h, extra, start = struct.unpack_from("<5H", broken, base)
+    esize = ENTRY_WORDS * 2 + extra
+    off, blk = base + 10, start
+    target = None
+    while True:
+        (st,) = struct.unpack_from("<H", broken, off)
+        if st == E_EOS:
+            break
+        e = struct.unpack_from("<7H", broken, off)
+        nm = (unrad50(e[1]) + unrad50(e[2])).rstrip()
+        if st & E_PERM and nm == out_name("WORST"):
+            target = blk
+            break
+        blk += e[4]; off += esize
+    if target is None:
+        print("  FAIL  could not find %s.DAT to corrupt" % out_name("WORST"))
+        ok = False
+    else:
+        broken[target * BLOCK + 40] ^= 0x01
+        rc, text = verify(bytes(broken))
+        if rc != 0 and "WRONG" in text:
+            print("  caught      one flipped bit in a chain output")
+        else:
+            print("  NOT CAUGHT  a flipped bit in a chain output")
+            ok = False
+
     print("all mutants caught" if ok else "self-test FAILED")
     return 0 if ok else 1
 
@@ -653,7 +799,8 @@ def main():
     p.add_argument("--device", default="MZ1:",
                    help="how FODOS will name this volume (default MZ1:)")
     p.add_argument("--iterations", type=int, default=50,
-                   help="passes written into STRESS.COM (default 50)")
+                   help="chain links per pattern (default 50); each link is "
+                        "two copies, so two reads and two writes of the file")
     p.add_argument("--self-test", action="store_true",
                    help="check the checker instead of building an image")
     p.add_argument("--inject", metavar="IMAGE",
@@ -665,7 +812,14 @@ def main():
                    help="list a volume's files and print any that read as text")
     p.add_argument("--compare", nargs=2, metavar=("BEFORE", "AFTER"),
                    help="name what changed between two images of a volume")
+    p.add_argument("--verify-outputs", metavar="IMAGE", dest="verify_image",
+                   help="check a returned volume's chain outputs against the "
+                        "patterns they came from -- this is the comparator the "
+                        "machine does not have")
     a = p.parse_args()
+
+    if a.verify_image:
+        return verify_outputs(a.verify_image, a.file_blocks)
 
     if a.list_image:
         list_volume(a.list_image)
@@ -705,8 +859,18 @@ def main():
         for name, ext, data in files:
             print("  %-6s.%-3s %4d blocks" % (name, ext,
                                               (len(data) + BLOCK - 1) // BLOCK))
+        # The chain needs room at run time that injection does not reserve:
+        # two live chain files plus one kept output per pattern.
+        runtime = a.file_blocks * (2 + len(PATTERNS))
+        spare = free_blocks(image)
+        print("  free after injection: %d blocks; the chain needs %d at its peak"
+              % (spare, runtime))
+        if spare < runtime:
+            print("  WARNING: not enough room.  Re-run with --file-blocks %d"
+                  % (spare // (2 + len(PATTERNS))))
         print("boot it and run @%sSTRESS  (adjust %s if it mounts elsewhere)"
               % (a.device, a.device))
+        print("then hand the image back:  --verify-outputs <image>")
         return 0
 
     image, files, free = build(a.blocks, a.file_blocks, a.device, a.iterations)
