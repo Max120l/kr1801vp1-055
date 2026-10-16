@@ -11,33 +11,24 @@ transceiver.
 This repository works out what the chip does, proves a substitute built from
 catalogue parts behaves identically, and lists what to buy.
 
-**Status: built, fitted, and proven — cold and hot.** The fault this repository
-exists for was confirmed on the machine in September 2026 by two independent
-methods: cooling D22 alone keeps the failing MS 0511 running, and a CPU-side RAM
-canary (in onerom-1801re2, `diag/canary`) shows every plane on the CPU's side of
-the bus staying clean for hundreds of passes while the peripheral processor —
-the side behind D22 — dies hot: black screen, no console bell, keyboard and
-hardware reset both ineffective until the machine cools. The 055 was the part to
-replace.
+**Status: built, fitted, and proven — cold and hot.**
 
-A substitute on **adapter revision C** now runs in that site. The machine passes
-its own ТЕСТИРОВАНИЕ **fourteen consecutive times with ОШИБОК 0**, and a
-purpose-built bus soak has moved **101.8 MiB through the chip in 1629 passes
-with zero errors** — including thirteen million transitions in which all sixteen
-lines reverse at once, which is the one case the substitute cannot reproduce the
-original's design for. Both against a part that failed after about ten minutes
-from cold. That also settles the polarity finding below, more cheaply than the
-bench check written for it — [TESTING.md](docs/TESTING.md#4-the-result).
+A substitute on adapter revision C runs as D22 in the machine this project came
+from. It passes the machine's own ТЕСТИРОВАНИЕ fourteen times with ОШИБОК 0, and
+a purpose-built bus soak moved **107 MiB through the chip in 1719 passes with
+zero errors** — fourteen million of them transitions in which all sixteen lines
+reverse at once, which is the one case this design cannot reproduce the
+original's answer to. The last 90 passes were run with the board deliberately
+heated until it was too hot to touch.
 
-And then hot: the machine was deliberately heated, with the soak running, until
-the board was too hot to touch, for a further **90 passes with the error count
-still at zero**. The original failed after ten minutes from cold and recovered
-within seconds of being cooled, so that is the fault's own axis — **the repair
-holds where the part it replaces actually broke.** Five minutes at temperature
-is a short window, and a longer one was deliberately declined rather than
-overlooked — heating a forty-year-old machine to re-test a part that is
-demonstrably fine risks the electrolytics and the remaining period ICs, none of
-which is the thing under test. See [TESTING.md](docs/TESTING.md#hot).
+That matters because the fault was thermal and nothing else: the original ran
+about ten minutes from cold, died, and recovered within seconds of being cooled.
+It was localised two independent ways in September 2026 — cooling D22 alone kept
+the machine up, and a CPU-side RAM canary (onerom-1801re2, `diag/canary`) stayed
+clean for hundreds of passes while the peripheral processor behind D22 died hot.
+
+Details, figures and what is still unmeasured:
+[TESTING.md](docs/TESTING.md#4-the-result).
 
 ## The two findings
 
@@ -122,7 +113,7 @@ running at all — see [TESTING.md](docs/TESTING.md#4-the-result).
   one claim in [DESIGN.md](docs/DESIGN.md#timing) still resting on reasoning
   rather than measurement — though a repair that survives a hot worst-case soak
   is strong circumstantial evidence the margin is there. See
-  [TESTING.md](docs/TESTING.md#1-confirm-the-polarity-on-the-bench).
+  [TESTING.md](docs/TESTING.md#1-the-polarity-check).
 - **The delay stagger is still not reproduced**, and now demonstrably does not
   need to be — at least not cold. The original spread its two bytes 7.5 ns apart
   to limit the supply transient when sixteen drivers switch; two identical '245s

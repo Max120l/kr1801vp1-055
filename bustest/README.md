@@ -120,15 +120,14 @@ change.
   corruption somewhere between the disk surface and memory; D22 is the most
   interesting suspect but not the only one.
 - **The patterns are proven; the full soak is not.** One pass of `WORST.DAT`
-  round-tripped exactly — see
-  [TESTING.md](../docs/TESTING.md#the-worst-case-measured-once). Nothing has yet
-  run the chain to completion, and nothing has run it hot.
+  round-tripped exactly. The full result is in
+  [TESTING.md](../docs/TESTING.md#4-the-result).
 
 ## Checking the checker
 
 A test that cannot fail proves nothing, which is the argument `make mutants`
-makes for the equivalence testbench. The same applies to a disk image written by
-code that was never run against the real thing:
+makes for the equivalence testbench and applies equally to a disk image written
+by code that never ran against the real thing:
 
 ```console
 $ python3 make_bustest.py --self-test
@@ -137,16 +136,21 @@ clean image
   caught      one flipped bit in WORST.DAT
   caught      home block checksum wrong
   caught      directory start wrong
+chain verification
+  a clean chain verifies
+  caught      one flipped bit in a chain output
 all mutants caught
 ```
 
-The volume is parsed back through an independent reader rather than compared
-against the writer's own idea of what it wrote, and three deliberate corruptions
-confirm that reader notices. This caught a real bug on its first run: `BUSTEST`
-is seven characters, RT-11 names are six, and the name was being silently
-truncated to `BUSTES` — so the file would have been written and then not found
-by the procedure that referenced it. Names are now rejected rather than trimmed.
+The volume is parsed back by an independent reader rather than compared against
+the writer's own idea of what it wrote, and deliberate corruptions confirm the
+reader notices. Injection additionally refuses to write if any pre-existing file
+on the target volume moved or changed.
 
+This caught a real bug on its first run: `BUSTEST` is seven characters, RT-11
+names are six, and the name was being silently truncated — the file would have
+been written and then not found. Over-long names are now refused rather than
+trimmed.
 
 # BUSTST.MAC — the same test, on the machine
 
@@ -201,31 +205,21 @@ discards it on exit and the volume is left exactly as it was found.
 
 ## How much of it is checked
 
-**Not assembled, not run** — there is no UKNC and no FODOS here, and no MACRO-11
-cross-assembler either. If MACRO rejects a line, the line is wrong.
+**Not assembled here** — there is no UKNC and no MACRO-11 cross-assembler in the
+environment this was written in. What *is* checked is the arithmetic, by
+re-implementing each routine in Python exactly as the assembly does it: `PUTOCT`
+exhaustively against `%06o` over all 65536 values, the `BIC`/`BIS` xor against
+`^`, the `SWAB` block/word split exhaustively, and the four generators for
+length and semantics.
 
-What *is* checked is the part most likely to be subtly wrong, by re-implementing
-each routine in Python exactly as the assembly does it:
-
-| routine | checked |
-|---|---|
-| `PUTOCT` | exhaustively, all 65536 values, against `%06o` |
-| the `BIC`/`BIS` xor | against `^` over a sweep of operand pairs |
-| `SWAB`+mask block/word split | exhaustively, all 65536 indices |
-| the four generators | lengths, and that `WORST` really reverses all sixteen lines on every transition |
-
-Two bugs were caught this way before it shipped. The report routine read its
-expected value from `4(SP)` when five pushed registers put it at `2(SP)`, so
-every error line would have printed a saved register instead of the data. And
-`XOR (SP),R0` is not a legal form — the PDP-11's `XOR` takes its source from a
-register — so that line would not have assembled at all; it is now built from
+That caught two bugs before it shipped — the report routine reading its expected
+value from the wrong stack offset, and `XOR (SP),R0`, which is not a legal form
+since the PDP-11's `XOR` takes its source from a register. It is now built from
 `BIC` and `BIS`, which also drops any dependency on `XOR` existing on this CPU.
-A third, cosmetic: the banner's `CTRL/C` contained the `.ASCIZ` delimiter and
-would have truncated the string.
 
-MACRO on the machine then found the one class of error no amount of Python
-could: `BCS` to the three error handlers was out of range. A PDP-11 conditional
-branch reaches ±127 words and the handlers sit several hundred words past the
-pattern generators, so each is now a `BCC` over a `JMP`. Three errors, all the
-same, and nothing else in 300 lines — which is about the best a first assembly
-of untested source can reasonably go.
+The first assembly on the machine then found the one class of error no amount of
+Python could: `BCS` to the three error handlers was out of range, because a
+PDP-11 conditional branch reaches ±127 words and the handlers sit several
+hundred words past the pattern generators. Each is now a `BCC` over a `JMP`.
+Three errors in 300 lines, all one class — which says something about which
+parts of untested assembly are actually risky: the layout, not the routines.
