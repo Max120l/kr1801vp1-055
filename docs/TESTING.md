@@ -404,5 +404,90 @@ from the original, which is the simultaneous switching of all sixteen drivers.
 - **A hot A/B on the socket**, which the carrier makes a seconds-long swap: the
   original back in, warmed until it dies, then the substitute in the same site
   under the same heat. That is the comparison the whole project is for.
-- **The scope check [DESIGN.md](DESIGN.md) asks for** — nOE against nA during a
-  read — now easy and non-destructive on the fitted substitute.
+- **The scope check**, below. The last claim in the repository resting on
+  reasoning rather than measurement.
+
+
+## 5. The release edge
+
+The one thing never measured. [DESIGN.md](DESIGN.md#timing) says the substitute
+lets go of the bus a few nanoseconds sooner than the part the circuit was built
+around, calls that the main un-analysed risk, and asks for a scope. Everything
+since has been circumstantial: the machine runs, cold and hot, under the worst
+data the bus can carry. Good evidence, not a measurement.
+
+It is now easy, because the substitute is fitted and the adapter brings every
+signal up to a 2.5 mm pad field instead of a 0.65 mm TSSOP lead.
+
+### Where to probe
+
+The pin field's top-side ring pads. With the board oriented as the silk reads,
+pin 1 at top-left:
+
+| | pin | pad | where it is |
+|---|---|---|---|
+| **ch1** | 41 | nOE | inner row, second pad from the top of the **right** side |
+| **ch2** | 22 | nA0 | the very corner pad, bottom of the right side, outer row |
+| ch3 | 20 | DIR | outer row, near the bottom of the **left** side |
+| gnd | 21 | GND | inner row, bottom-left corner |
+
+ch1 and ch2 are both on the right-hand edge, 24 mm apart, so two probes sit
+comfortably without crossing. Pin 41's nearest neighbour is pin 42 (VCC) 2.8 mm
+away diagonally — enough room, but it is +5 V and this is a working machine, so
+place that tip deliberately.
+
+Ground is the awkward part: pin 21 is the only ground pin and it is 31 mm from
+pin 41, with the single GND via no closer. A short lead to a convenient ground
+on the motherboard near the site beats a long clip lead back to pin 21. At AHCT
+edge rates a 20–30 mm ground path is acceptable; a 150 mm clip lead is not, and
+will manufacture ringing that looks like a finding.
+
+**10× probes.** A 1× probe's 50–100 pF on a bus line changes the thing being
+measured.
+
+### The measurement
+
+Trigger **rising edge on ch1 (nOE)** at about 1.5 V — that is the disable edge,
+the one in question. Start at 200 ns/div to see the whole cycle and where the
+release sits in it, then zoom to 10 ns/div on the edge itself.
+
+Measure **t_dis**: from nOE crossing 1.5 V to nA0 *departing* its driven level.
+Departure, not arrival — when the driver lets go, the line does not snap. It
+drifts toward whatever the bus termination holds it at, on an RC curve set by
+bus capacitance. Take the point where it leaves the valid level by ~0.3 V.
+
+**Probe a line that is driven LOW at the moment of release.** The MPI bus is
+active low and terminated high, so a line released from low visibly ramps up
+while one released from high barely moves at all. If nA0 happens to be high in
+the cycles you catch, use trigger holdoff or simply hunt for a cycle where it is
+low beforehand.
+
+Expect roughly 5–14 ns for a 74AHCT245. The original's output pads are 16.5 ns,
+so the difference under test is small by construction.
+
+### What would count as a problem
+
+Not the absolute number — the margin. Look at the wide view and find how long
+before nOE rises the data had already been stable. On an asynchronous handshake
+bus the data is taken, *then* the cycle ends and the bus is released, so that
+gap should be tens to hundreds of nanoseconds. If it is, a few nanoseconds of
+earlier release is swamped and the risk is closed quantitatively rather than
+circumstantially.
+
+It is a finding only if the release crowds the end of the data window — tens of
+nanoseconds of margin or less. The fix in that case is on the enable, not the
+data: an RC on nOE, delaying only the disable edge, as
+[DESIGN.md](DESIGN.md#timing) says.
+
+### The rigorous version, and why it is optional
+
+The complete answer is an A/B: the same measurement with the original on a
+carrier in the same socket, cold. If the two t_dis figures are within a few
+nanoseconds then the substitute cannot be dropping data meaningfully earlier
+than the part the machine was designed around, whatever the margin turns out to
+be, and no knowledge of the handshake timing is needed at all.
+
+It costs pulling a working repair and fitting a chip known to be failing. That
+is a real price for refining a number the absolute measurement will probably
+already have settled. Do the single-ended version first; the A/B only earns its
+risk if the margin comes back uncomfortably small.
