@@ -21,11 +21,16 @@ hardware reset both ineffective until the machine cools. The 055 was the part to
 replace.
 
 A substitute on **adapter revision C** now runs in that site. The machine passes
-its own ТЕСТИРОВАНИЕ **fourteen consecutive times with ОШИБОК 0** and has run
-over thirty minutes continuously, against an original that failed after about
-ten from cold. That also settles the polarity finding below, more cheaply than
-the bench check written for it —
-[TESTING.md](docs/TESTING.md#4-the-result).
+its own ТЕСТИРОВАНИЕ **fourteen consecutive times with ОШИБОК 0**, and a
+purpose-built bus soak has moved **101.8 MiB through the chip in 1629 passes
+with zero errors** — including thirteen million transitions in which all sixteen
+lines reverse at once, which is the one case the substitute cannot reproduce the
+original's design for. Both against a part that failed after about ten minutes
+from cold. That also settles the polarity finding below, more cheaply than the
+bench check written for it — [TESTING.md](docs/TESTING.md#4-the-result).
+
+Still cold, though: the original's fault was thermal, and nothing here has yet
+been run hot.
 
 ## The two findings
 
@@ -110,12 +115,12 @@ running at all — see [TESTING.md](docs/TESTING.md#4-the-result).
   original out of circuit with nOE driven by hand, and nothing has put a scope
   on the release edge of either part. See
   [TESTING.md](docs/TESTING.md#1-confirm-the-polarity-on-the-bench).
-- **The delay stagger is still not reproduced.** The original deliberately makes
-  its two bytes 7.5 ns apart to spread the supply current when sixteen drivers
-  switch; two identical '245s switch together, and the answer is decoupling. The
-  machine runs, so that appears to be sufficient — but nothing has yet driven
-  all sixteen lines through `0000`/`FFFF` on purpose, which is the worst case
-  the stagger existed to spread. It was out-voted by the result, not solved.
+- **The delay stagger is still not reproduced**, and now demonstrably does not
+  need to be — at least not cold. The original spread its two bytes 7.5 ns apart
+  to limit the supply transient when sixteen drivers switch; two identical '245s
+  switch together, and the answer here is decoupling. Thirteen million
+  deliberate worst-case transitions have now gone through without a bad bit, so
+  this is a solved problem rather than an out-voted one. Hot is still untested.
 
 ## Credits
 

@@ -264,6 +264,46 @@ Two notes on the substitutions, neither of them a problem in the running unit:
   precisely the noise this design spends four capacitors avoiding. Worth
   confirming against the rev C netlist.
 
+### The soak, at room temperature
+
+`BUSTST` ran for about ninety-five minutes on the repaired machine:
+
+```
+BUSTST - KR1801VP1-055 bus stress. Stop with CTRL-C.
+PASS 003135 ERRS 000000
+```
+
+Octal 3135 is **1629 passes**, and every one of them compared clean:
+
+| | |
+|---|---|
+| words compared | 26 689 536 |
+| word transfers over the bus | 53 379 072 (each written, then read back) |
+| data through D22 | 101.8 MiB |
+| disk blocks moved | 208 512 |
+| errors | **0** |
+
+Of that, `WORST.DAT` alone accounts for **6 672 384 words of alternating
+`0000`/`FFFF`** — over thirteen million transitions in which all sixteen lines
+reverse at the same instant. That is precisely the event the original's 7.5 ns
+stagger existed to spread, and the one thing two identical '245s cannot
+reproduce.
+
+**That closes the stagger question at room temperature.** It had only ever had
+an argument behind it — decoupling is better than 1980s practice, so the spike
+should be survivable — and then a single measured pass. Thirteen million
+worst-case transitions without a bad bit is no longer an argument.
+
+Three caveats, none of them small:
+
+- **Room temperature only.** The original failed thermally. A substitute that
+  passes cold has not been tested where the part it replaces actually broke.
+- **It is a path test, not a chip test.** Anything this could have caught lies
+  somewhere between the disk surface and memory. D22 carries all of it, but so
+  do other things.
+- **The release timing is still unmeasured.** No scope has been on the nOE
+  edge; see [DESIGN.md](DESIGN.md#timing).
+
 ### Still worth running
 
 Nothing above specifically stresses the one place this design knowingly departs
@@ -284,9 +324,13 @@ from the original, which is the simultaneous switching of all sixteen drivers.
 - **Rungs 2 and 3**, the `make_regtest.py` and `make_ramtest.py` instruments
   from onerom-1801re2. The register test isolates this bus path specifically,
   which no amount of whole-machine testing does.
-- **Heat, deliberately.** Not because the logic will fail — a modern
-  transceiver will not — but because a hand-built assembly's joints and leads
-  move when warm, and that is the failure that otherwise appears in six months.
+- **Heat, deliberately — now the only test that matters.** Everything above is
+  cold. The original ran about ten minutes from cold and then failed, recovering
+  within seconds of being cooled, so temperature is the axis the whole fault
+  lived on. `BUSTST` reports a bad word the moment it happens, which makes a
+  hot run finally worth doing: warm the area with a hair dryer while it runs and
+  watch `ERRS`. A substitute that holds at 1629 passes cold and holds again hot
+  is the end of this project.
 - **Power cycles.** Twenty cold starts. Enable-envelope margin shows up as an
   intermittent failure to boot rather than as a wrong bit, so no soak finds it.
 - **A hot A/B on the socket**, which the carrier makes a seconds-long swap: the
