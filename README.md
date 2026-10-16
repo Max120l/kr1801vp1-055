@@ -30,10 +30,12 @@ from cold. That also settles the polarity finding below, more cheaply than the
 bench check written for it — [TESTING.md](docs/TESTING.md#4-the-result).
 
 And then hot: the machine was deliberately heated, with the soak running, until
-the board was too hot to touch, and the error count stayed at zero. The original
-failed after ten minutes from cold and recovered within seconds of being cooled,
-so that is the fault's own axis — **the repair is proven where the part it
-replaces actually broke.**
+the board was too hot to touch, for a further **90 passes with the error count
+still at zero**. The original failed after ten minutes from cold and recovered
+within seconds of being cooled, so that is the fault's own axis — **the repair
+holds where the part it replaces actually broke.** Five minutes at temperature
+is a short window and the hot figure deserves a longer run; see
+[TESTING.md](docs/TESTING.md#hot).
 
 ## The two findings
 

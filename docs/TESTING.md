@@ -307,7 +307,36 @@ Three caveats, none of them small:
 ### Hot
 
 The machine was then deliberately heated, with `BUSTST` running, until the board
-was far too hot to touch. **`ERRS` stayed at zero.**
+was far too hot to touch. The counter went from octal 3135 to **octal 3267** —
+90 further passes — and **`ERRS` stayed at zero**:
+
+| | |
+|---|---|
+| hot passes | 90 (~5 minutes) |
+| words compared hot | 1 474 560 |
+| data through D22 hot | 5.6 MiB |
+| worst-case transitions hot | 737 280 |
+| errors | **0** |
+
+| | run total |
+|---|---|
+| passes | 1719 (~100 minutes) |
+| data through D22 | 107.4 MiB |
+| errors | **0** |
+
+**Five minutes is a short window, and worth stating plainly rather than
+rounding up.** It is not a hot soak in the sense the cold run was a cold soak.
+
+What makes it count anyway is that the *condition* is harsher than the one that
+killed the original, not milder. The original's ten minutes was the time it took
+to heat *itself* to the point of failure from a cold start; the substitute here
+was already far past that temperature, externally, for the whole 90 passes.
+Five minutes at temperature is not the same measurement as ten minutes reaching
+it — it is the more severe one.
+
+A longer hot run is cheap now and would remove the last bit of ambiguity. An
+hour at temperature would put the hot figure on the same footing as the cold
+one.
 
 That is the whole project in one line. The fault this repository exists for was
 thermal and nothing else: the original ran about ten minutes from cold, failed,
@@ -319,10 +348,11 @@ that only passed cold would have proved nothing at all.
 It passes hot, under a pattern deliberately chosen to be the worst case for the
 one thing it does differently from the part it replaces.
 
-**The repair is done.** Not "appears to work" — the failure mode has been
-reproduced in the original, removed by the substitute, and the substitute has
-then been pushed past the conditions that killed the original while running the
-most hostile data the bus can carry.
+**The repair is done.** Not "appears to work" — the failure mode was reproduced
+in the original, localised two independent ways, removed by the substitute, and
+the substitute then taken past the temperature that killed the original while
+carrying the most hostile data the bus can take. What remains is duration, not
+doubt.
 
 ### Still worth running
 
