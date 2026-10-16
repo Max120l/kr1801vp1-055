@@ -30,6 +30,12 @@ clean for hundreds of passes while the peripheral processor behind D22 died hot.
 Details, figures and what is still unmeasured:
 [TESTING.md](docs/TESTING.md#4-the-result).
 
+<img src="adapter/img/installed.jpg" width="340" alt="Adapter rev C fitted in the D22 site of an Elektronika MS 0511">
+
+*Adapter revision C in the socketed D22 site of the MS 0511. The three chips are
+the two 74AHCT245 and the 74AHCT125; the board stands about 10 mm above the
+motherboard, so check what sits above the site before closing the case.*
+
 ## The two findings
 
 **It has no state.** Every cell in the die schematic is a gate, a buffer or an

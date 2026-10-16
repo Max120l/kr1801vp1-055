@@ -9,6 +9,13 @@ their /OE. The logic is the one proven equivalent in `sim/`.
 
 ![top](img/top.png) ![bottom](img/bottom.png)
 
+<img src="img/installed.jpg" width="340" alt="Adapter rev C fitted in the D22 site">
+
+*Rev C fitted. The site is socketed with individual machined receptacles, as
+described under Form factor in [DESIGN.md](../docs/DESIGN.md#form-factor), so
+the original, a sourced replacement and this board all plug into the same
+holes.*
+
 `vp1-055-adapter-gerbers.zip` is the fab package (two layers, 0.2 mm tracks,
 0.15 mm clearance, 0.7/0.3 mm vias, GND pours — any prototype fab).
 `adapter_routed.kicad_pcb` is the routed board: 330 segments, 18 vias, every
