@@ -11,7 +11,7 @@ transceiver.
 This repository works out what the chip does, proves a substitute built from
 catalogue parts behaves identically, and lists what to buy.
 
-**Status: built, fitted, and working in the machine.** The fault this repository
+**Status: built, fitted, and proven — cold and hot.** The fault this repository
 exists for was confirmed on the machine in September 2026 by two independent
 methods: cooling D22 alone keeps the failing MS 0511 running, and a CPU-side RAM
 canary (in onerom-1801re2, `diag/canary`) shows every plane on the CPU's side of
@@ -29,8 +29,11 @@ original's design for. Both against a part that failed after about ten minutes
 from cold. That also settles the polarity finding below, more cheaply than the
 bench check written for it — [TESTING.md](docs/TESTING.md#4-the-result).
 
-Still cold, though: the original's fault was thermal, and nothing here has yet
-been run hot.
+And then hot: the machine was deliberately heated, with the soak running, until
+the board was too hot to touch, and the error count stayed at zero. The original
+failed after ten minutes from cold and recovered within seconds of being cooled,
+so that is the fault's own axis — **the repair is proven where the part it
+replaces actually broke.**
 
 ## The two findings
 
@@ -111,9 +114,10 @@ running at all — see [TESTING.md](docs/TESTING.md#4-the-result).
   10 · 11 · 10 · 11 with pin 1 top-left, pin 1 in the inner row). Rev C
   corrects the field, and is the revision now fabricated and running in the
   machine.
-- **The bench measurements are not done.** The high-Z release check needs the
-  original out of circuit with nOE driven by hand, and nothing has put a scope
-  on the release edge of either part. See
+- **No scope has ever been on the nOE release edge**, of either part. It is the
+  one claim in [DESIGN.md](docs/DESIGN.md#timing) still resting on reasoning
+  rather than measurement — though a repair that survives a hot worst-case soak
+  is strong circumstantial evidence the margin is there. See
   [TESTING.md](docs/TESTING.md#1-confirm-the-polarity-on-the-bench).
 - **The delay stagger is still not reproduced**, and now demonstrably does not
   need to be — at least not cold. The original spread its two bytes 7.5 ns apart

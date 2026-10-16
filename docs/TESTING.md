@@ -304,6 +304,26 @@ Three caveats, none of them small:
 - **The release timing is still unmeasured.** No scope has been on the nOE
   edge; see [DESIGN.md](DESIGN.md#timing).
 
+### Hot
+
+The machine was then deliberately heated, with `BUSTST` running, until the board
+was far too hot to touch. **`ERRS` stayed at zero.**
+
+That is the whole project in one line. The fault this repository exists for was
+thermal and nothing else: the original ran about ten minutes from cold, failed,
+and came back within seconds of being cooled. Every other symptom — the black
+screen, the dead keyboard, the hardware reset that did nothing — hung off that.
+Temperature was the axis the entire fault lived on, which is why a substitute
+that only passed cold would have proved nothing at all.
+
+It passes hot, under a pattern deliberately chosen to be the worst case for the
+one thing it does differently from the part it replaces.
+
+**The repair is done.** Not "appears to work" — the failure mode has been
+reproduced in the original, removed by the substitute, and the substitute has
+then been pushed past the conditions that killed the original while running the
+most hostile data the bus can carry.
+
 ### Still worth running
 
 Nothing above specifically stresses the one place this design knowingly departs
@@ -324,13 +344,8 @@ from the original, which is the simultaneous switching of all sixteen drivers.
 - **Rungs 2 and 3**, the `make_regtest.py` and `make_ramtest.py` instruments
   from onerom-1801re2. The register test isolates this bus path specifically,
   which no amount of whole-machine testing does.
-- **Heat, deliberately — now the only test that matters.** Everything above is
-  cold. The original ran about ten minutes from cold and then failed, recovering
-  within seconds of being cooled, so temperature is the axis the whole fault
-  lived on. `BUSTST` reports a bad word the moment it happens, which makes a
-  hot run finally worth doing: warm the area with a hair dryer while it runs and
-  watch `ERRS`. A substitute that holds at 1629 passes cold and holds again hot
-  is the end of this project.
+- ~~**Heat, deliberately.**~~ Done, and clean — see above. It was the only
+  remaining test that could have changed the answer.
 - **Power cycles.** Twenty cold starts. Enable-envelope margin shows up as an
   intermittent failure to boot rather than as a wrong bit, so no soak finds it.
 - **A hot A/B on the socket**, which the carrier makes a seconds-long swap: the
