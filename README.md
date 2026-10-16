@@ -34,8 +34,10 @@ the board was too hot to touch, for a further **90 passes with the error count
 still at zero**. The original failed after ten minutes from cold and recovered
 within seconds of being cooled, so that is the fault's own axis — **the repair
 holds where the part it replaces actually broke.** Five minutes at temperature
-is a short window and the hot figure deserves a longer run; see
-[TESTING.md](docs/TESTING.md#hot).
+is a short window, and a longer one was deliberately declined rather than
+overlooked — heating a forty-year-old machine to re-test a part that is
+demonstrably fine risks the electrolytics and the remaining period ICs, none of
+which is the thing under test. See [TESTING.md](docs/TESTING.md#hot).
 
 ## The two findings
 

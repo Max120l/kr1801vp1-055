@@ -334,9 +334,32 @@ was already far past that temperature, externally, for the whole 90 passes.
 Five minutes at temperature is not the same measurement as ten minutes reaching
 it — it is the more severe one.
 
-A longer hot run is cheap now and would remove the last bit of ambiguity. An
-hour at temperature would put the hot figure on the same footing as the cold
-one.
+**A longer hot run was considered and deliberately not done.** Heating a
+forty-year-old machine for an hour to re-test a part that is demonstrably fine
+is a bad trade: the electrolytics, the remaining period ICs and the substitute's
+own 10 µF X5R — rated to +85 °C, the lowest-rated thing on the adapter — are all
+more fragile than the thing under test. The risk lands on everything *except*
+the chip being measured.
+
+The reasoning that makes 90 passes sufficient is worth setting down, because it
+is not "we got bored":
+
+- **The question was never whether modern logic survives heat.** It was whether
+  *the machine* still fails when hot. It does not. Ninety passes answer that;
+  nine hundred answer it again.
+- **The two parts are not in the same category.** A 74AHCT245 is specified across
+  a temperature range that comfortably contains "too hot to touch", so running
+  clean there is the expected behaviour of a part inside its ratings, not a
+  margin that happened to hold. The original was a degraded forty-year-old gate
+  array operating outside any specification at all. Extrapolating the failure of
+  one to the other was never sound.
+- **The failure being repaired was propagation delay stretching with
+  temperature.** The substitute starts two to four times faster than the part it
+  replaces, so it has far more margin to lose before anything marginal appears —
+  and it is a new part, not a degraded one.
+
+So the hot result stands at 90 passes, and the reason it is 90 and not more is
+recorded here rather than left looking like an omission.
 
 That is the whole project in one line. The fault this repository exists for was
 thermal and nothing else: the original ran about ten minutes from cold, failed,
