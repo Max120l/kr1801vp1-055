@@ -1,15 +1,22 @@
 # A replacement for the КР1801ВП1-055
 
 The 055 is a Soviet gate-array bus transceiver: sixteen bidirectional lines plus
-three unidirectional buffers, in a 42-pin through-hole package with the pins
-in four staggered rows. It cannot be bought,
-and the only machine known to use it is the **Elektronika MS 0511 (UKNC)**,
+three unidirectional buffers, in a 42-pin through-hole package with the pins in
+four staggered rows. It cannot be bought, and the only machine known to use it
+is the **Elektronika MS 0511 (UKNC)**,
 where it is **D22** — sitting between the peripheral processor and the MPI bus,
 so when it fails the machine fails in ways that look like everything except a
 transceiver.
 
 This repository works out what the chip does, proves a substitute built from
 catalogue parts behaves identically, and lists what to buy.
+
+![The original КР1801ВП1-055 beside adapter revision C](adapter/img/original-and-adapter.jpg)
+
+*The part and its replacement, at the same scale. Left: the original, date code
+8905, with its pins in the four staggered rows that took three board revisions
+to get right. Right: rev C, carrying two 74AHCT245 and a 74AHCT125 in
+essentially the original's footprint.*
 
 **Status: built, fitted, and proven — cold and hot.**
 
